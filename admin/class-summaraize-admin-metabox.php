@@ -21,7 +21,7 @@ class Summaraize_Admin_Metabox {
 	public function add_meta_box() {
 		$api_key = get_option( 'summaraize_openai_api_key' );
 
-		if ( ! empty( $api_key ) && Summaraize_Admin_Settings::validate_openai_api_key( $api_key ) ) {
+		if ( ! empty( $api_key ) && Summaraize_OpenAI_Settings::validate_openai_api_key( $api_key ) ) {
 			$post_types = get_option( 'summaraize_post_types', array() );
 
 			// Ensure $post_types is an array.

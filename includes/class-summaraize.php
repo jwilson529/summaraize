@@ -118,6 +118,8 @@ class Summaraize {
 		 * The class responsible for defining all settings for the plugin.
 		 */
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-openai-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-gemini-settings.php';
 
 		/**
 		 * The class responsible for defining all metabox items.
@@ -160,13 +162,17 @@ class Summaraize {
 
 		$plugin_admin    = new Summaraize_Admin( $this->get_plugin_name(), $this->get_version() );
 		$plugin_settings = new Summaraize_Admin_Settings();
+		$plugin_openai   = new Summaraize_OpenAI_Settings();
+		$plugin_gemini   = new Summaraize_Google_Gemini_Settings();
 		$plugin_metabox  = new Summaraize_Admin_Metabox();
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_menu', $plugin_settings, 'summaraize_register_options_page' );
 		$this->loader->add_action( 'admin_init', $plugin_settings, 'summaraize_register_settings' );
-		$this->loader->add_action( 'wp_ajax_summaraize_ajax_validate_openai_api_key', $plugin_settings, 'summaraize_ajax_validate_openai_api_key' );
+		$this->loader->add_action( 'wp_ajax_summaraize_ajax_validate_openai_api_key', $plugin_openai, 'summaraize_ajax_validate_openai_api_key' );
+		$this->loader->add_action( 'wp_ajax_summaraize_ajax_validate_google_gemini_api_key', $plugin_gemini, 'summaraize_ajax_validate_google_gemini_api_key' );
+
 		$this->loader->add_action( 'wp_ajax_summaraize_gather_content', $plugin_admin, 'summaraize_gather_content' );
 		$this->loader->add_action( 'wp_ajax_summaraize_auto_save', $plugin_settings, 'summaraize_auto_save' );
 		$this->loader->add_action( 'add_meta_boxes', $plugin_metabox, 'add_meta_box' );

@@ -304,13 +304,13 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	 * Callback for the OpenAI API key field.
 	 */
 	public function summaraize_openai_api_key_callback() {
-	    $ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
-	    if ( $ai_provider === 'openai' ) {
-	        $value = get_option( 'summaraize_openai_api_key', '' );
-	        echo '<input type="password" name="summaraize_openai_api_key" value="' . esc_attr( $value ) . '" />';
-	        echo '<p class="description">' .
-	        wp_kses_post( __( 'Get your OpenAI API Key <a href="https://beta.openai.com/signup/">here</a>.', 'summaraize' ) ) . '</p>';
-	    }
+		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
+		if ( 'openai' === $ai_provider ) {
+			$value = get_option( 'summaraize_openai_api_key', '' );
+			echo '<input type="password" name="summaraize_openai_api_key" value="' . esc_attr( $value ) . '" />';
+			echo '<p class="description">' .
+			wp_kses_post( __( 'Get your OpenAI API Key <a href="https://beta.openai.com/signup/">here</a>.', 'summaraize' ) ) . '</p>';
+		}
 	}
 
 	/**
@@ -346,5 +346,4 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			'summaraize_advanced_settings_section'
 		);
 	}
-
 }

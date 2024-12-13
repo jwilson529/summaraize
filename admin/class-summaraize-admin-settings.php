@@ -30,19 +30,19 @@ class Summaraize_Admin_Settings {
 	 * Display the options page.
 	 */
 	public function summaraize_options_page() {
-		// Instantiate the OpenAI settings class
+		// Instantiate the OpenAI settings class.
 		$openai_settings = new Summaraize_OpenAI_Settings();
-		// Get the selected AI provider
-		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' ); 
+		// Get the selected AI provider.
+		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
 		?>
 		<div id="summaraize" class="wrap">
 			<h1><?php esc_html_e( 'SummarAIze Settings', 'summaraize' ); ?></h1>
 			
 			<h2 class="nav-tab-wrapper">
-			    <a href="#main-settings" class="nav-tab nav-tab-active"><?php esc_html_e( 'Main Settings', 'summaraize' ); ?></a>
-			    <?php if ( $ai_provider === 'openai' ) : ?>
-			        <a href="#advanced-settings" class="nav-tab"><?php esc_html_e( 'OpenAI Assistant Settings', 'summaraize' ); ?></a>
-			    <?php endif; ?>
+				<a href="#main-settings" class="nav-tab nav-tab-active"><?php esc_html_e( 'Main Settings', 'summaraize' ); ?></a>
+				<?php if ( 'openai' === $ai_provider ) : ?>
+					<a href="#advanced-settings" class="nav-tab"><?php esc_html_e( 'OpenAI Assistant Settings', 'summaraize' ); ?></a>
+				<?php endif; ?>
 			</h2>
 
 			<form class="summaraize-settings-form" method="post" action="options.php">
@@ -110,101 +110,99 @@ class Summaraize_Admin_Settings {
 	 * Register the plugin settings.
 	 */
 	public function summaraize_register_settings() {
-	    // Instantiate the settings classes
-	    $openai_settings = new Summaraize_OpenAI_Settings();
-	    $gemini_settings = new Summaraize_Google_Gemini_Settings();
+		// Instantiate the settings classes.
+		$openai_settings = new Summaraize_OpenAI_Settings();
+		$gemini_settings = new Summaraize_Google_Gemini_Settings();
 
-	    // Register the AI provider setting
-	    add_settings_field(
-	        'summaraize_ai_provider',
-	        __( 'AI Provider', 'summaraize' ),
-	        array( $this, 'summaraize_ai_provider_callback' ),
-	        'summaraize_settings',
-	        'summaraize_settings_section'
-	    );
+		// Register the AI provider setting.
+		add_settings_field(
+			'summaraize_ai_provider',
+			__( 'AI Provider', 'summaraize' ),
+			array( $this, 'summaraize_ai_provider_callback' ),
+			'summaraize_settings',
+			'summaraize_settings_section'
+		);
 
-	    // Register the API key settings with sanitization
-	    register_setting(
-	        'summaraize_settings',
-	        'summaraize_openai_api_key',
-	        array( 'sanitize_callback' => 'sanitize_text_field' )
-	    );
-	    register_setting(
-	        'summaraize_settings',
-	        'summaraize_google_gemini_api_key',
-	        array( 'sanitize_callback' => 'sanitize_text_field' )
-	    );
+		// Register the API key settings with sanitization.
+		register_setting(
+			'summaraize_settings',
+			'summaraize_openai_api_key',
+			array( 'sanitize_callback' => 'sanitize_text_field' )
+		);
+		register_setting(
+			'summaraize_settings',
+			'summaraize_google_gemini_api_key',
+			array( 'sanitize_callback' => 'sanitize_text_field' )
+		);
 
-	    // Add the main settings section
-	    add_settings_section(
-	        'summaraize_settings_section',
-	        __( 'SummarAIze Settings', 'summaraize' ),
-	        array( $this, 'summaraize_settings_section_callback' ),
-	        'summaraize_settings'
-	    );
+		// Add the main settings section.
+		add_settings_section(
+			'summaraize_settings_section',
+			__( 'SummarAIze Settings', 'summaraize' ),
+			array( $this, 'summaraize_settings_section_callback' ),
+			'summaraize_settings'
+		);
 
-	    // Conditionally register settings based on the selected AI provider
-	    $ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
+		// Conditionally register settings based on the selected AI provider.
+		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
 
-	    if ( $ai_provider === 'openai' ) {
-	        // --- OpenAI specific settings ---
+		if ( 'openai' === $ai_provider ) {
+			// --- OpenAI specific settings ---.
 
-	        // Add the OpenAI API key field
-	        add_settings_field(
-	            'summaraize_openai_api_key',
-	            __( 'OpenAI API Key', 'summaraize' ),
-	            array( $openai_settings, 'summaraize_openai_api_key_callback' ),
-	            'summaraize_settings',
-	            'summaraize_settings_section',
-	            array( 'label_for' => 'summaraize_openai_api_key' )
-	        );
+			// Add the OpenAI API key field.
+			add_settings_field(
+				'summaraize_openai_api_key',
+				__( 'OpenAI API Key', 'summaraize' ),
+				array( $openai_settings, 'summaraize_openai_api_key_callback' ),
+				'summaraize_settings',
+				'summaraize_settings_section',
+				array( 'label_for' => 'summaraize_openai_api_key' )
+			);
 
-	        // Register Assistant ID setting and field
-	        register_setting( 'summaraize_settings', 'summaraize_assistant_id' );
-	        add_settings_field(
-	            'summaraize_assistant_id',
-	            __( 'Assistant ID', 'summaraize' ),
-	            array( $openai_settings, 'summaraize_assistant_id_callback' ),
-	            'summaraize_settings',
-	            'summaraize_settings_section',
-	            array( 'label_for' => 'summaraize_assistant_id' )
-	        );
+			// Register Assistant ID setting and field.
+			register_setting( 'summaraize_settings', 'summaraize_assistant_id' );
+			add_settings_field(
+				'summaraize_assistant_id',
+				__( 'Assistant ID', 'summaraize' ),
+				array( $openai_settings, 'summaraize_assistant_id_callback' ),
+				'summaraize_settings',
+				'summaraize_settings_section',
+				array( 'label_for' => 'summaraize_assistant_id' )
+			);
 
-	        // Retrieve the API key
-	        $open_api_key = get_option( 'summaraize_openai_api_key' );
+			// Retrieve the API key.
+			$open_api_key = get_option( 'summaraize_openai_api_key' );
 
-	        // Check if the API key is valid
-	        if ( ! empty( $open_api_key ) && Summaraize_OpenAI_Settings::validate_openai_api_key( $open_api_key ) ) {
-	            $this->register_summaraize_main_settings_fields();
-	            $openai_settings->register_summaraize_advanced_settings_fields();
-	        } else {
-	            add_settings_error(
-	                'summaraize_openai_api_key',
-	                'invalid-api-key',
-	                sprintf(
-	                    __( 'The OpenAI API key is invalid. Please enter a valid API key in the <a href="%s">SummarAIze settings</a> to use SummarAIze.', 'summaraize' ),
-	                    esc_url( admin_url( 'options-general.php?page=summaraize-settings' ) )
-	                ),
-	                'error'
-	            );
-	        }
-	    } elseif ( $ai_provider === 'google_gemini' ) {
-	        // --- Google Gemini specific settings ---
-	        $gemini_api_key = get_option( 'summaraize_google_gemini_api_key' );
-	    	if ( ! empty( $gemini_api_key ) && Summaraize_Google_Gemini_Settings::validate_google_gemini_api_key( $gemini_api_key ) ) {
-	    		$this->register_summaraize_main_settings_fields();
-		        // Add the Google Gemini API key field
-		        add_settings_field(
-		            'summaraize_google_gemini_api_key',
-		            __( 'Google Gemini API Key', 'summaraize' ),
-		            array( $gemini_settings, 'summaraize_google_gemini_api_key_callback' ),
-		            'summaraize_settings',
-		            'summaraize_settings_section',
-		            array( 'label_for' => 'summaraize_google_gemini_api_key' )
-		        );
+			// Check if the API key is valid.
+			if ( ! empty( $open_api_key ) && Summaraize_OpenAI_Settings::validate_openai_api_key( $open_api_key ) ) {
+				$this->register_summaraize_main_settings_fields();
+				$openai_settings->register_summaraize_advanced_settings_fields();
+			} else {
+				add_settings_error(
+					'summaraize_openai_api_key',
+					'invalid-api-key',
+					wp_kses_post(
+						__( 'The OpenAI API key is invalid. Please enter a valid API key in the <a href="options-general.php?page=summaraize-settings">SummarAIze settings</a> to use SummarAIze.', 'summaraize' )
+					),
+					'error'
+				);
 			}
-
-	    }
+		} elseif ( 'google_gemini' === $ai_provider ) {
+			// --- Google Gemini specific settings ---.
+			$gemini_api_key = get_option( 'summaraize_google_gemini_api_key' );
+			if ( ! empty( $gemini_api_key ) && Summaraize_Google_Gemini_Settings::validate_google_gemini_api_key( $gemini_api_key ) ) {
+				$this->register_summaraize_main_settings_fields();
+				// Add the Google Gemini API key field.
+				add_settings_field(
+					'summaraize_google_gemini_api_key',
+					__( 'Google Gemini API Key', 'summaraize' ),
+					array( $gemini_settings, 'summaraize_google_gemini_api_key_callback' ),
+					'summaraize_settings',
+					'summaraize_settings_section',
+					array( 'label_for' => 'summaraize_google_gemini_api_key' )
+				);
+			}
+		}
 	}
 
 
@@ -212,7 +210,7 @@ class Summaraize_Admin_Settings {
 	 * Register the main settings fields if the API key is valid.
 	 */
 	private function register_summaraize_main_settings_fields() {
-		// Instantiate the OpenAI settings class
+		// Instantiate the OpenAI settings class.
 		$openai_settings = new Summaraize_OpenAI_Settings();
 
 		register_setting( 'summaraize_settings', 'summaraize_post_types' );
@@ -223,8 +221,6 @@ class Summaraize_Admin_Settings {
 		register_setting( 'summaraize_settings', 'summaraize_button_style' );
 		register_setting( 'summaraize_settings', 'summaraize_button_color' );
 		register_setting( 'summaraize_settings', 'summaraize_list_type' );
-
-
 
 		add_settings_field(
 			'summaraize_post_types',
@@ -281,29 +277,41 @@ class Summaraize_Admin_Settings {
 			'summaraize_settings',
 			'summaraize_settings_section'
 		);
-
-
 	}
 
+	/**
+	 * Renders the AI provider selection dropdown.
+	 *
+	 * @since 1.0.0
+	 */
 	public function summaraize_ai_provider_callback() {
-	    $ai_provider = get_option( 'summaraize_ai_provider', 'openai' ); // Default to OpenAI
-	    ?>
-	    <select name="summaraize_ai_provider" id="summaraize_ai_provider">
-	        <option value="openai" <?php selected( $ai_provider, 'openai' ); ?>><?php esc_html_e( 'OpenAI', 'summaraize' ); ?></option>
-	        <option value="google_gemini" <?php selected( $ai_provider, 'google_gemini' ); ?>><?php esc_html_e( 'Google Gemini', 'summaraize' ); ?></option>
-	    </select>
-	    <?php
+		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' ); // Default to OpenAI.
+		?>
+		<select name="summaraize_ai_provider" id="summaraize_ai_provider">
+			<option value="openai" <?php selected( $ai_provider, 'openai' ); ?>><?php esc_html_e( 'OpenAI', 'summaraize' ); ?></option>
+			<option value="google_gemini" <?php selected( $ai_provider, 'google_gemini' ); ?>><?php esc_html_e( 'Google Gemini', 'summaraize' ); ?></option>
+		</select>
+		<?php
 	}
 
-
-
+	/**
+	 * Renders the Google Gemini API key input field.
+	 *
+	 * Includes a link to Google AI Studio for obtaining an API key.
+	 *
+	 * @since 1.0.0
+	 */
 	public function summaraize_google_gemini_api_key_callback() {
-	    $ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
-	    if ( $ai_provider === 'google_gemini' ) {
-	        $value = get_option( 'summaraize_google_gemini_api_key', '' );
-	        echo '<input type="password" name="summaraize_google_gemini_api_key" value="' . esc_attr( $value ) . '" />';
-	        // You might want to add a description with a link to get the Google Gemini API key
-	    }
+		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
+		if ( 'google_gemini' === $ai_provider ) {
+			$value = get_option( 'summaraize_google_gemini_api_key', '' );
+			echo '<input type="password" name="summaraize_google_gemini_api_key" value="' . esc_attr( $value ) . '" />';
+			echo '<p class="description">';
+			echo wp_kses_post(
+				__( 'Get your Google Gemini API key from <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.', 'summaraize' )
+			);
+			echo '</p>';
+		}
 	}
 
 
@@ -506,78 +514,80 @@ class Summaraize_Admin_Settings {
 	 * @return void Outputs JSON success or error response.
 	 */
 	public function summaraize_auto_save() {
-	    // Check AJAX nonce for security.
-	    check_ajax_referer( 'summaraize_ajax_nonce', 'nonce' );
+		// Check AJAX nonce for security.
+		check_ajax_referer( 'summaraize_ajax_nonce', 'nonce' );
 
-	    // Verify the user has the appropriate capability.
-	    if ( ! current_user_can( 'manage_options' ) ) {
-	        wp_send_json_error( array( 'message' => __( 'Permission denied.', 'summaraize' ) ) );
-	    }
+		// Verify the user has the appropriate capability.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'summaraize' ) ) );
+		}
 
-	    // Ensure 'field_name' is set in the request.
-	    if ( empty( $_POST['field_name'] ) ) {
-	        wp_send_json_error( array( 'message' => __( 'Missing field name.', 'summaraize' ) ) );
-	    }
+		// Ensure 'field_name' is set in the request.
+		if ( empty( $_POST['field_name'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Missing field name.', 'summaraize' ) ) );
+		}
 
-	    // Sanitize the field name.
-	    $field_name = sanitize_text_field( wp_unslash( $_POST['field_name'] ) );
+		// Sanitize the field name.
+		$field_name = sanitize_text_field( wp_unslash( $_POST['field_name'] ) );
 
-	    // Handle special case for 'summaraize_points_sorted'.
-	    if ( 'summaraize_points_sorted' === $field_name ) {
-	        $this->handle_points_sorted();
-	        return;
-	    }
+		// Handle special case for 'summaraize_points_sorted'.
+		if ( 'summaraize_points_sorted' === $field_name ) {
+			$this->handle_points_sorted();
+			return;
+		}
 
-	    // Define allowed option keys for settings.
-	    $allowed_options = array(
-	        'summaraize_openai_api_key',
-	        'summaraize_post_types',
-	        'summaraize_assistant_id',
-	        'summaraize_widget_title',
-	        'summaraize_display_position',
-	        'summaraize_display_mode',
-	        'summaraize_button_style',
-	        'summaraize_button_color',
-	        'summaraize_list_type',
-	        'summaraize_prompt_type',
-	        'summaraize_custom_prompt',
-	        'summaraize_ai_model',
-	        'summaraize_ai_provider',
-	        'summaraize_google_gemini_api_key',
-	    );
+		// Define allowed option keys for settings.
+		$allowed_options = array(
+			'summaraize_openai_api_key',
+			'summaraize_post_types',
+			'summaraize_assistant_id',
+			'summaraize_widget_title',
+			'summaraize_display_position',
+			'summaraize_display_mode',
+			'summaraize_button_style',
+			'summaraize_button_color',
+			'summaraize_list_type',
+			'summaraize_prompt_type',
+			'summaraize_custom_prompt',
+			'summaraize_ai_model',
+			'summaraize_ai_provider',
+			'summaraize_google_gemini_api_key',
+		);
 
-	    // Sanitize and validate the option key.
-	    $option_key = sanitize_key( str_replace( '[]', '', $field_name ) );
+		// Sanitize and validate the option key.
+		$option_key = sanitize_key( str_replace( '[]', '', $field_name ) );
 
-	    if ( ! in_array( $option_key, $allowed_options, true ) ) {
-	        wp_send_json_error( array( 'message' => __( 'Invalid option key.', 'summaraize' ) ) );
-	    }
+		if ( ! in_array( $option_key, $allowed_options, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid option key.', 'summaraize' ) ) );
+		}
 
-	    // Sanitize field value.
-	    if ( isset( $_POST['field_value'] ) && is_array( $_POST['field_value'] ) ) {
-	        // Sanitize each element if value is an array.
-	        $field_value = array_map( 'sanitize_text_field', wp_unslash( $_POST['field_value'] ) );
-	    } else {
-	        // Otherwise, sanitize as a string.
-	        $field_value = isset( $_POST['field_value'] ) ? sanitize_text_field( wp_unslash( $_POST['field_value'] ) ) : '';
-	    }
+		// Sanitize field value.
+		if ( isset( $_POST['field_value'] ) && is_array( $_POST['field_value'] ) ) {
+			// Sanitize each element if value is an array.
+			$field_value = array_map( 'sanitize_text_field', wp_unslash( $_POST['field_value'] ) );
+		} else {
+			// Otherwise, sanitize as a string.
+			$field_value = isset( $_POST['field_value'] ) ? sanitize_text_field( wp_unslash( $_POST['field_value'] ) ) : '';
+		}
 
-	    // Save the option and return the result.
-	    if ( update_option( $option_key, $field_value ) || get_option( $option_key ) === $field_value ) {
-	        // Check if the saved option is the AI provider
-	        if ( $option_key === 'summaraize_ai_provider' ) {
-	            // Refresh the page if the AI provider is changed
-	            wp_send_json_success( array(
-	                'message' => __( 'Option saved. Refreshing page...', 'summaraize' ),
-	                'refresh' => true, // Add a flag to indicate page refresh
-	            ) );
-	        } else {
-	            // Normal success response for other options
-	            wp_send_json_success( array( 'message' => __( 'Option saved.', 'summaraize' ) ) );
-	        }
-	    } else {
-	        wp_send_json_error( array( 'message' => __( 'Failed to save option.', 'summaraize' ) ) );
-	    }
+		// Save the option and return the result.
+		if ( update_option( $option_key, $field_value ) || get_option( $option_key ) === $field_value ) {
+			// Check if the saved option is the AI provider.
+			if ( 'summaraize_ai_provider' === $option_key ) {
+				// Refresh the page if the AI provider is changed.
+				wp_send_json_success(
+					array(
+						'message' => __( 'Option saved. Refreshing page...', 'summaraize' ),
+						'refresh' => true, // Add a flag to indicate page refresh.
+					)
+				);
+			} else {
+				// Normal success response for other options.
+				wp_send_json_success( array( 'message' => __( 'Option saved.', 'summaraize' ) ) );
+			}
+		} else {
+			wp_send_json_error( array( 'message' => __( 'Failed to save option.', 'summaraize' ) ) );
+		}
 	}
 
 	/**
@@ -588,31 +598,33 @@ class Summaraize_Admin_Settings {
 	 * @return void Outputs JSON success or error response.
 	 */
 	private function handle_points_sorted() {
-	    // Ensure required fields are present.
-	    if ( empty( $_POST['post_id'] ) || empty( $_POST['field_value'] ) ) {
-	        wp_send_json_error( array( 'message' => __( 'Missing post ID or points data.', 'summaraize' ) ) );
-	    }
+		// Check AJAX nonce for security.
+		check_ajax_referer( 'summaraize_ajax_nonce', 'nonce' );
 
-	    // Sanitize post ID.
-	    $post_id = absint( $_POST['post_id'] );
+		// Ensure required fields are present..
+		if ( empty( $_POST['post_id'] ) || empty( $_POST['field_value'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Missing post ID or points data.', 'summaraize' ) ) );
+		}
 
-	    // Sanitize and decode the points data.
-	    $sanitized_json = sanitize_text_field( wp_unslash( $_POST['field_value'] ) );
-	    $sorted_points  = json_decode( $sanitized_json, true );
+		// Sanitize post ID..
+		$post_id = absint( $_POST['post_id'] );
 
-	    if ( ! is_array( $sorted_points ) ) {
-	        wp_send_json_error( array( 'message' => __( 'Invalid points data.', 'summaraize' ) ) );
-	    }
+		// Sanitize and decode the points data..
+		$sanitized_json = sanitize_text_field( wp_unslash( $_POST['field_value'] ) );
+		$sorted_points  = json_decode( $sanitized_json, true );
 
-	    // Sanitize each point in the array.
-	    $sanitized_points = array_map( 'sanitize_text_field', $sorted_points );
+		if ( ! is_array( $sorted_points ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid points data.', 'summaraize' ) ) );
+		}
 
-	    // Save the sorted points as post meta.
-	    if ( update_post_meta( $post_id, 'summaraize_points', $sanitized_points ) ) {
-	        wp_send_json_success( array( 'message' => __( 'Points reordered and saved.', 'summaraize' ) ) );
-	    } else {
-	        wp_send_json_error( array( 'message' => __( 'Failed to save points.', 'summaraize' ) ) );
-	    }
+		// Sanitize each point in the array..
+		$sanitized_points = array_map( 'sanitize_text_field', $sorted_points );
+
+		// Save the sorted points as post meta.
+		if ( update_post_meta( $post_id, 'summaraize_points', $sanitized_points ) ) {
+			wp_send_json_success( array( 'message' => __( 'Points reordered and saved.', 'summaraize' ) ) );
+		} else {
+			wp_send_json_error( array( 'message' => __( 'Failed to save points.', 'summaraize' ) ) );
+		}
 	}
-
 }

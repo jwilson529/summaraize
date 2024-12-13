@@ -118,8 +118,8 @@ class Summaraize {
 		 * The class responsible for defining all settings for the plugin.
 		 */
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-settings.php';
-		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-openai-settings.php';
-		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-gemini-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-openai-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-google-gemini-settings.php';
 
 		/**
 		 * The class responsible for defining all metabox items.

@@ -93,11 +93,10 @@ class Summaraize_Admin {
 
 		$query = sanitize_text_field( wp_unslash( $_POST['content'] ) );
 
-		// Get the selected AI provider
+		// Get the selected AI provider.
 		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
 
-		if ( $ai_provider === 'openai' ) {
-		    // --- OpenAI handling ---
+		if ( 'openai' === $ai_provider ) {
 
 			// Retrieve individual options.
 			$api_key      = get_option( 'summaraize_openai_api_key' );
@@ -129,22 +128,22 @@ class Summaraize_Admin {
 			}
 			wp_die();
 
-		} elseif ( $ai_provider === 'google_gemini' ) {
-    // --- Google Gemini handling ---
+		} elseif ( 'google_gemini' === $ai_provider ) {
 
-    $api_key = get_option( 'summaraize_google_gemini_api_key' );
+			$api_key = get_option( 'summaraize_google_gemini_api_key' );
 
-    if ( empty( $api_key ) ) {
-        wp_send_json_error( 'Google Gemini API key is not configured.' );
-        wp_die();
-    }
+			if ( empty( $api_key ) ) {
+				wp_send_json_error( 'Google Gemini API key is not configured.' );
+				wp_die();
+			}
 
-    // Construct the request payload with the instructions directly.
-    $payload = array(
-        'contents' => array(
-            array(
-                'parts' => array(
-                    array( 'text' => 'Analyze the provided article and extract the top 5 key points.
+			// Construct the request payload with the instructions directly.
+			$payload = array(
+				'contents'         => array(
+					array(
+						'parts' => array(
+							array(
+								'text' => 'Analyze the provided article and extract the top 5 key points.
     Return ONLY the key points in a JSON array containing 5 objects, each representing a key point. The array should be the value of the key "points".
 
     Where:
@@ -154,84 +153,75 @@ class Summaraize_Admin {
 
     Here is the article:
 
-    ' . $query ) // Include the user's query here
-                )
-            )
-        ),
-        'generationConfig' => array(
-            'response_mime_type' => 'application/json',
-            'response_schema'    => array(
-                'type'       => 'OBJECT',
-                'properties' => array(
-                    'points' => array(
-                        'type'  => 'ARRAY',
-                        'items' => array(
-                            'type'       => 'OBJECT',
-                            'properties' => array(
-                                'index' => array( 'type' => 'INTEGER' ),
-                                'text'  => array( 'type' => 'STRING' ),
-                            ),
-                        ),
-                    ),
-                ),
-            ),
-        ),
-    );
+    ' . $query,
+							),
+						),
+					),
+				),
+				'generationConfig' => array(
+					'response_mime_type' => 'application/json',
+					'response_schema'    => array(
+						'type'       => 'OBJECT',
+						'properties' => array(
+							'points' => array(
+								'type'  => 'ARRAY',
+								'items' => array(
+									'type'       => 'OBJECT',
+									'properties' => array(
+										'index' => array( 'type' => 'INTEGER' ),
+										'text'  => array( 'type' => 'STRING' ),
+									),
+								),
+							),
+						),
+					),
+				),
+			);
 
-    $response = wp_remote_post(
-    	'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $api_key, 
-        array(
-            'headers' => array( 'Content-Type' => 'application/json' ),
-            'body'    => json_encode( $payload ),
-            'timeout' => 60, // Increased timeout to 60 seconds
-        )
-    );
+			$response = wp_remote_post(
+				'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $api_key,
+				array(
+					'headers' => array( 'Content-Type' => 'application/json' ),
+					'body'    => wp_json_encode( $payload ),
+					'timeout' => 60, // Increased timeout to 60 seconds.
+				)
+			);
 
-    if ( is_wp_error( $response ) ) {
-        error_log( 'Google Gemini API call failed: ' . $response->get_error_message() );
-        wp_send_json_error( $response->get_error_message() );
-    } else {
-        $response_code = wp_remote_retrieve_response_code( $response );
-        $response_body = wp_remote_retrieve_body( $response );
+			if ( is_wp_error( $response ) ) {
+				wp_send_json_error( $response->get_error_message() );
+			} else {
+				$response_code = wp_remote_retrieve_response_code( $response );
+				$response_body = wp_remote_retrieve_body( $response );
 
-        error_log( 'Google Gemini API call response code: ' . $response_code );
-        error_log( 'Google Gemini API call response body: ' . $response_body );
+				if ( $response_code >= 200 && $response_code < 300 ) {
+					// Attempt to decode the JSON response.
+					$decoded_body = json_decode( $response_body, true );
 
-        if ( $response_code >= 200 && $response_code < 300 ) {
-            // Attempt to decode the JSON response
-            $decoded_body = json_decode( $response_body, true );
+					if ( json_last_error() === JSON_ERROR_NONE ) {
+						// Extract the 'points' array from the response.
+						if ( isset( $decoded_body['candidates'][0]['content']['parts'][0]['text'] ) ) {
+							$points_json   = $decoded_body['candidates'][0]['content']['parts'][0]['text'];
+							$points_object = json_decode( $points_json, true ); // Decode into an object.
 
-            if ( json_last_error() === JSON_ERROR_NONE ) {
-                // Extract the 'points' array from the response
-                if ( isset( $decoded_body['candidates'][0]['content']['parts'][0]['text'] ) ) {
-                	$points_json = $decoded_body['candidates'][0]['content']['parts'][0]['text'];
-                	$points_object = json_decode( $points_json, true ); // Decode into an object
+							if ( json_last_error() === JSON_ERROR_NONE && is_array( $points_object ) && isset( $points_object['points'] ) ) {
+								$points_array = $points_object['points']; // Access the nested 'points' array.
 
-                	if ( json_last_error() === JSON_ERROR_NONE && is_array( $points_object ) && isset( $points_object['points'] ) ) {
-                	    $points_array = $points_object['points']; // Access the nested 'points' array
-
-                	    // Send the extracted points in the desired format
-                	    wp_send_json_success( array( 'points' => $points_array ) );
-                	} else {
-                        error_log( 'Failed to decode points JSON: ' . json_last_error_msg() );
-                        wp_send_json_error( 'Failed to process the response.' );
-                    }
-                } else {
-                    error_log( 'Invalid response format from Google Gemini.' );
-                    wp_send_json_error( 'Invalid response format.' );
-                }
-            } else {
-                // Log JSON decoding error
-                error_log( 'Failed to decode JSON response: ' . json_last_error_msg() );
-                wp_send_json_error( 'Failed to decode JSON response.' );
-            }
-        } else {
-            // Log unsuccessful response code
-            error_log( 'Google Gemini API call unsuccessful. Response code: ' . $response_code );
-            wp_send_json_error( 'Google Gemini API call unsuccessful.' );
-        }
-    }
-    wp_die();
+								// Send the extracted points in the desired format.
+								wp_send_json_success( array( 'points' => $points_array ) );
+							} else {
+								wp_send_json_error( 'Failed to process the response.' );
+							}
+						} else {
+							wp_send_json_error( 'Invalid response format.' );
+						}
+					} else {
+						wp_send_json_error( 'Failed to decode JSON response.' );
+					}
+				} else {
+					wp_send_json_error( 'Google Gemini API call unsuccessful.' );
+				}
+			}
+			wp_die();
 		}
 	}
 

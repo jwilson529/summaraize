@@ -54,10 +54,22 @@ class Summaraize_Admin {
 	 */
 	public function enqueue_scripts() {
 		// Enqueue the admin script for your plugin.
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js', array( 'jquery' ), $this->version, false );
+		wp_enqueue_script(
+			$this->plugin_name,
+			plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
+			array( 'jquery' ),
+			$this->version,
+			false
+		);
 
-		// Enqueue Sortable.js from CDN.
-		wp_enqueue_script( 'sortablejs', 'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js', array(), '1.14.0', true );
+		// Enqueue Sortable.js from your local js folder.
+		wp_enqueue_script(
+			'sortablejs',
+			plugin_dir_url( __FILE__ ) . 'js/Sortable.min.js',
+			array(),
+			'1.14.0',
+			true
+		);
 
 		// Localize the script with the necessary nonces.
 		wp_localize_script(

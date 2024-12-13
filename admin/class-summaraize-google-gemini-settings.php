@@ -67,14 +67,15 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 			return false;
 		}
 
-		// Check if the API key has been validated recently.
-		$last_validated = get_option( 'summaraize_gemini_api_key_last_validated', 0 );
-		if ( $last_validated > ( time() - ( 24 * 60 * 60 ) ) ) { // 24 hours
-			return true; // Already validated within the last 24 hours.
+		// Check if the API key has been validated recently via transient.
+		$validated_status = get_transient( 'summaraize_gemini_api_key_valid' );
+		if ( 'valid' === $validated_status ) {
+			return true; // Key was validated recently.
 		}
 
+		// Perform the API request.
 		$response = wp_remote_post(
-			'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $api_key,
+			'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' . $api_key,
 			array(
 				'headers' => array(
 					'Content-Type' => 'application/json',
@@ -94,15 +95,14 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 		);
 
 		if ( is_wp_error( $response ) ) {
-
 			return false;
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
 
 		if ( $response_code >= 200 && $response_code < 300 ) {
-			// Update the last validated time.
-			update_option( 'summaraize_gemini_api_key_last_validated', time() );
+			// Cache the validation result in a transient for 24 hours.
+			set_transient( 'summaraize_gemini_api_key_valid', 'valid', DAY_IN_SECONDS );
 			return true;
 		}
 

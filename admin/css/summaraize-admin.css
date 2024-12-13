@@ -327,10 +327,11 @@ p.summaraize-settings {
     display: flex;
     align-items: center;
     margin-top: 5px;
-    opacity: 1; /* Set opacity to 1 for testing */
-    background-color: rgba(0, 0, 0, 0.1); /* Ensure visibility */
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
     padding: 5px;
     border-radius: 4px;
+    transition: opacity 0.3s;
 }
 
 .summaraize-spinner {
@@ -345,10 +346,14 @@ p.summaraize-settings {
 
 .summaraize-spinner-message {
     font-size: 14px;
-    color: #000; /* Ensure the text color is visible */
+    color: #000;
 }
 
 @keyframes summaraize-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }

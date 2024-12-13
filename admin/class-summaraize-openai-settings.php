@@ -256,6 +256,13 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			return false;
 		}
 
+		// Check for cached models in transient.
+		$cached_models = get_transient( 'summaraize_openai_models' );
+		if ( $cached_models ) {
+			return $cached_models;
+		}
+
+		// Make the API request if no cached models are found.
 		$response = wp_remote_get(
 			'https://api.openai.com/v1/models',
 			array(
@@ -288,17 +295,23 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			);
 
 			if ( ! empty( $models ) ) {
-				return array_map(
+				$model_ids = array_map(
 					function ( $model ) {
 						return $model['id'];
 					},
 					$models
 				);
+
+				// Cache the models in a transient for 24 hours (adjust as needed).
+				set_transient( 'summaraize_openai_models', $model_ids, DAY_IN_SECONDS );
+
+				return $model_ids;
 			}
 		}
 
 		return false;
 	}
+
 
 	/**
 	 * Callback for the OpenAI API key field.

@@ -92,12 +92,6 @@ class Summaraize_Admin_Settings {
 	}
 
 
-
-
-
-
-
-
 	/**
 	 * Display admin notices for settings.
 	 */
@@ -463,6 +457,8 @@ class Summaraize_Admin_Settings {
 		echo '<p>' . esc_html__( 'Select which post types SummarAIze should be enabled on:', 'summaraize' ) . '</p>';
 		echo '<p><em>' . esc_html__( 'Custom post types must have the editor enabled.', 'summaraize' ) . '</em></p>';
 
+		echo '<div class="summaraize-post-types-container">';
+
 		foreach ( $post_types as $post_type ) {
 			$checked         = in_array( $post_type, $selected_post_types, true ) ? 'checked' : '';
 			$post_type_label = str_replace( '_', ' ', ucwords( $post_type ) );
@@ -475,10 +471,9 @@ class Summaraize_Admin_Settings {
 			echo '<span class="post-type-label">' . esc_html( $post_type_label ) . '</span>';
 			echo '</div>';
 		}
+
+		echo '</div>';
 	}
-
-
-
 
 
 	/**
@@ -487,8 +482,6 @@ class Summaraize_Admin_Settings {
 	public function summaraize_settings_section_callback() {
 		echo '<p>' . esc_html__( 'Configure the settings for the SummarAIze Pro plugin.', 'summaraize' ) . '</p>';
 	}
-
-
 
 	/**
 	 * Callback for the Display Mode field.

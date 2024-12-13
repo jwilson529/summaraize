@@ -8,7 +8,7 @@
     "fix": "phpcbf -d error_reporting=\"E_ALL&~E_DEPRECATED\" --ignore=*/vendor/*,*/node_modules/* --standard=WordPress --extensions=php .",
     "check": "phpcs -d error_reporting=\"E_ALL&~E_DEPRECATED\" --ignore=*/vendor/*,*/node_modules/* --standard=WordPress --extensions=php . > check.txt",
     "phpmd": "phpmd . text phpmd.xml --exclude vendor,node_modules > phpmd.txt",
-    "dist": "find . -name '.DS_Store' -type f -delete && zip -r summarize.zip . -x \"node_modules/*\" \"assets/*\" \"*.git/*\" \"*.gitignore\" \"*.zipignore\" \"check.txt\" \"phpmd.txt\" \"package.json\" \"package-lock.json\" \"phpmd.xml\" \"README.md\"",
+    "dist": "find . -name '.DS_Store' -type f -delete && zip -r summarize.zip . -x \"node_modules/*\" \"assets/*\" \"*.git/*\" \"*.github/*\" \"*.gitignore\" \"*.zipignore\" \"vendor/*\" \"check.txt\" \"composer.json\" \"phpmd.txt\" \"package.json\" \"package-lock.json\" \"phpmd.xml\" \"README.md\"",
     "plugin-check": "wp plugin check ."
   },
   "repository": {

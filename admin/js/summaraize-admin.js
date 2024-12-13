@@ -42,7 +42,7 @@
          * @param value
          */
         function autoSaveField($field, value = null) {
-            var fieldName, fieldValue, inputName; 
+            var fieldName, fieldValue, inputName;
             if (typeof $field === 'string') {
                 fieldName = $field;
                 fieldValue = value;
@@ -68,35 +68,35 @@
             addSpinnerWithMessage($field, 'Updating ' + inputName + '...'); // Add spinner with message
 
             $.ajax({
-                url: summaraize_admin_vars.ajax_url,
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    action: 'summaraize_auto_save',
-                    nonce: summaraize_admin_vars.summaraize_ajax_nonce,
-                    post_id: summaraize_admin_vars.post_id,
-                    field_name: fieldName,
-                    field_value: fieldValue
-                }
-            })
-            .done(function(response) {
-                if (response.success) {
-                    showNotification(response.data.message);
-                    if (response.data.refresh) {
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
+                    url: summaraize_admin_vars.ajax_url,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'summaraize_auto_save',
+                        nonce: summaraize_admin_vars.summaraize_ajax_nonce,
+                        post_id: summaraize_admin_vars.post_id,
+                        field_name: fieldName,
+                        field_value: fieldValue
                     }
-                } else {
-                    showNotification(response.data.message, 'error');
-                }
-            })
-            .fail(function() {
-                showNotification('Error saving field.', 'error');
-            })
-            .always(function() {
-                removeSpinnerWithMessage($field); // Remove the spinner in the always() callback
-            });
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        showNotification(response.data.message);
+                        if (response.data.refresh) {
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1000);
+                        }
+                    } else {
+                        showNotification(response.data.message, 'error');
+                    }
+                })
+                .fail(function() {
+                    showNotification('Error saving field.', 'error');
+                })
+                .always(function() {
+                    removeSpinnerWithMessage($field); // Remove the spinner in the always() callback
+                });
         }
 
         /**
@@ -269,7 +269,7 @@
                     }
                 })
                 .done(function(response) {
-                    console.log( "AJAX response:", response ); 
+                    console.log("AJAX response:", response);
                     $button.prop('disabled', false);
                     $spinner.hide();
                     $button.text('Generate Top 5 Points');
@@ -341,31 +341,31 @@
             const apiKey = $(this).val();
             addSpinnerWithMessage(geminiApiKeyField, 'Validating API key...');
             $.ajax({
-                url: summaraize_admin_vars.ajax_url,
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    action: 'summaraize_ajax_validate_google_gemini_api_key', // Updated action
-                    nonce: summaraize_admin_vars.summaraize_ajax_nonce,
-                    api_key: apiKey
-                }
-            })
-            .done(function(validationResponse) {
-                if (validationResponse.success) {
-                    autoSaveField(geminiApiKeyField);
-                    setTimeout(function() {
-                        location.reload();
-                    }, 1000);
-                } else {
-                    showNotification(validationResponse.data.message || 'Invalid API key.', 'error');
-                }
-            })
-            .fail(function() {
-                showNotification('Error validating API key.', 'error');
-            })
-            .always(function() {
-                removeSpinnerWithMessage(geminiApiKeyField);
-            });
+                    url: summaraize_admin_vars.ajax_url,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'summaraize_ajax_validate_google_gemini_api_key', // Updated action
+                        nonce: summaraize_admin_vars.summaraize_ajax_nonce,
+                        api_key: apiKey
+                    }
+                })
+                .done(function(validationResponse) {
+                    if (validationResponse.success) {
+                        autoSaveField(geminiApiKeyField);
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        showNotification(validationResponse.data.message || 'Invalid API key.', 'error');
+                    }
+                })
+                .fail(function() {
+                    showNotification('Error validating API key.', 'error');
+                })
+                .always(function() {
+                    removeSpinnerWithMessage(geminiApiKeyField);
+                });
         }, 500));
 
         // Auto-save settings fields

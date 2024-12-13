@@ -32,6 +32,7 @@ class Summaraize_Admin_Settings {
 	public function summaraize_options_page() {
 		// Instantiate the OpenAI settings class.
 		$openai_settings = new Summaraize_OpenAI_Settings();
+
 		// Get the selected AI provider.
 		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
 		?>
@@ -182,19 +183,19 @@ class Summaraize_Admin_Settings {
 				);
 			}
 		} elseif ( 'google_gemini' === $ai_provider ) {
+			// Add the Google Gemini API key field.
+			add_settings_field(
+				'summaraize_google_gemini_api_key',
+				__( 'Google Gemini API Key', 'summaraize' ),
+				array( $gemini_settings, 'summaraize_google_gemini_api_key_callback' ),
+				'summaraize_settings',
+				'summaraize_settings_section',
+				array( 'label_for' => 'summaraize_google_gemini_api_key' )
+			);
 			// --- Google Gemini specific settings ---.
 			$gemini_api_key = get_option( 'summaraize_google_gemini_api_key' );
 			if ( ! empty( $gemini_api_key ) && Summaraize_Google_Gemini_Settings::validate_google_gemini_api_key( $gemini_api_key ) ) {
 				$this->register_summaraize_main_settings_fields();
-				// Add the Google Gemini API key field.
-				add_settings_field(
-					'summaraize_google_gemini_api_key',
-					__( 'Google Gemini API Key', 'summaraize' ),
-					array( $gemini_settings, 'summaraize_google_gemini_api_key_callback' ),
-					'summaraize_settings',
-					'summaraize_settings_section',
-					array( 'label_for' => 'summaraize_google_gemini_api_key' )
-				);
 			}
 		}
 	}

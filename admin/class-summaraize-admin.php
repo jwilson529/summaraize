@@ -43,9 +43,12 @@ class Summaraize_Admin {
 	 * Enqueue admin styles.
 	 */
 	public function enqueue_styles() {
-		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/summaraize-admin.css', array(), $this->version, 'all' );
+	    // Check if we're on an admin edit screen with an editor textarea.
+	    $current_screen = get_current_screen();
+	    if ( $current_screen && $current_screen->base === 'post' && post_type_supports( $current_screen->post_type, 'editor' ) ) {
+	        wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/summaraize-admin.css', array(), $this->version, 'all' );
+	    }
 	}
-
 
 	/**
 	 * Register the JavaScript for the admin area.
@@ -53,35 +56,39 @@ class Summaraize_Admin {
 	 * @since 1.0.0
 	 */
 	public function enqueue_scripts() {
-		// Enqueue the admin script for your plugin.
-		wp_enqueue_script(
-			$this->plugin_name,
-			plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
-			array( 'jquery' ),
-			$this->version,
-			false
-		);
+	    // Check if we're on an admin edit screen with an editor textarea.
+	    $current_screen = get_current_screen();
+	    if ( $current_screen && $current_screen->base === 'post' && post_type_supports( $current_screen->post_type, 'editor' ) ) {
+	        // Enqueue the admin script for your plugin.
+	        wp_enqueue_script(
+	            $this->plugin_name,
+	            plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
+	            array( 'jquery' ),
+	            $this->version,
+	            false
+	        );
 
-		// Enqueue Sortable.js from your local js folder.
-		wp_enqueue_script(
-			'sortablejs',
-			plugin_dir_url( __FILE__ ) . 'js/Sortable.min.js',
-			array(),
-			'1.14.0',
-			true
-		);
+	        // Enqueue Sortable.js from your local js folder.
+	        wp_enqueue_script(
+	            'sortablejs',
+	            plugin_dir_url( __FILE__ ) . 'js/Sortable.min.js',
+	            array(),
+	            '1.14.0',
+	            true
+	        );
 
-		// Localize the script with the necessary nonces.
-		wp_localize_script(
-			$this->plugin_name,
-			'summaraize_admin_vars',
-			array(
-				'ajax_url'                  => admin_url( 'admin-ajax.php' ),
-				'summaraize_ajax_nonce'     => wp_create_nonce( 'summaraize_ajax_nonce' ),
-				'summaraize_meta_box_nonce' => wp_create_nonce( 'summaraize_meta_box' ),
-				'post_id'                   => get_the_ID(),
-			)
-		);
+	        // Localize the script with the necessary nonces.
+	        wp_localize_script(
+	            $this->plugin_name,
+	            'summaraize_admin_vars',
+	            array(
+	                'ajax_url'                  => admin_url( 'admin-ajax.php' ),
+	                'summaraize_ajax_nonce'     => wp_create_nonce( 'summaraize_ajax_nonce' ),
+	                'summaraize_meta_box_nonce' => wp_create_nonce( 'summaraize_meta_box' ),
+	                'post_id'                   => get_the_ID(),
+	            )
+	        );
+	    }
 	}
 
 

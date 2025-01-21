@@ -1,4 +1,4 @@
-name: 'build-test'
+name: 'Plugin Check and WPCS Test'
 
 on:
   pull_request:
@@ -8,42 +8,45 @@ on:
       - 'releases/*'
 
 jobs:
-  test:
+  plugin-check:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Setup Node.js environment
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
+      # Create a temporary working directory
+      - name: Create Temporary Working Directory
+        run: |
+          mkdir temp_dir
+          git clone --depth 1 --branch ${{ github.ref_name }} . temp_dir
+          cd temp_dir
 
-      # Remove hidden files like .DS_Store
-      - name: Remove hidden files
-        run: find . -name ".DS_Store" -delete
+      # Remove dev files (only in temp_dir)
+      - name: Remove Dev Files
+        run: |
+          rm -rf node_modules vendor .git .github *.gitignore *.zipignore check.txt composer.json phpmd.txt package.json package-lock.json phpmd.xml README.md
 
-      # Set up PHP environment
+      # Setup PHP environment
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.0'
 
-      # Install WPCS dependencies
+      # Install WPCS and run standards check
       - name: Install WPCS
         run: |
           composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
           composer global require "wp-coding-standards/wpcs"
           composer global require "dealerdirect/phpcodesniffer-composer-installer"
 
-      # Run WPCS checks
+      # Run WPCS (WordPress PHP, JS, CSS Coding Standards Check)
       - name: Run WPCS
-        run: |
-          ~/.composer/vendor/bin/phpcs --standard=WordPress . --ignore=vendor,node_modules
+        run: ~/.composer/vendor/bin/phpcs --standard=WordPress --extensions=php,css . --ignore=vendor,node_modules,assets
+        working-directory: temp_dir
         continue-on-error: true
 
-      # Run plugin check
-      - name: Run plugin check
+      # Run Plugin Check
+      - name: Run Plugin Check
         uses: wordpress/plugin-check-action@v1

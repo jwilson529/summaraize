@@ -210,6 +210,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			echo '</p>';
 		}
 	}
+
 	/**
 	 * Handles AJAX request to validate the OpenAI API key.
 	 *
@@ -222,11 +223,19 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	 */
 	public static function summaraize_ajax_validate_openai_api_key() {
 		if ( ! check_ajax_referer( 'summaraize_ajax_nonce', 'nonce', false ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid nonce', 'summaraize' ) ) );
+			wp_send_json_error(
+				array(
+					'message' => __( 'Invalid nonce', 'summaraize' ),
+				)
+			);
 		}
 
 		if ( ! isset( $_POST['api_key'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'API key is missing.', 'summaraize' ) ) );
+			wp_send_json_error(
+				array(
+					'message' => __( 'API key is missing.', 'summaraize' ),
+				)
+			);
 		}
 
 		$api_key = sanitize_text_field( wp_unslash( $_POST['api_key'] ) );
@@ -241,9 +250,14 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 				)
 			);
 		} else {
-			wp_send_json_error( array( 'message' => __( 'API key is invalid or no suitable models found.', 'summaraize' ) ) );
+			wp_send_json_error(
+				array(
+					'message' => __( 'API key is invalid or no suitable models found.', 'summaraize' ),
+				)
+			);
 		}
 	}
+
 	/**
 	 * Validates the OpenAI API key and fetches models that support function calling.
 	 *
@@ -254,12 +268,6 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	public static function validate_openai_api_key( $api_key ) {
 		if ( empty( $api_key ) ) {
 			return false;
-		}
-
-		// Check for cached models in transient.
-		$cached_models = get_transient( 'summaraize_openai_models' );
-		if ( $cached_models ) {
-			return $cached_models;
 		}
 
 		// Make the API request if no cached models are found.

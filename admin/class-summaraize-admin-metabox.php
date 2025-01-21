@@ -65,7 +65,9 @@ class Summaraize_Admin_Metabox {
 		$button_color      = get_post_meta( $post->ID, 'summaraize_button_color', true );
 		$list_type         = get_post_meta( $post->ID, 'summaraize_list_type', true );
 
-		echo '<button id="generate-summaraize-button"><div class="summaraize-spinner" style="display: none;"></div>' . esc_html__( 'Generate Top 5 Points', 'summaraize' ) . '</button>';
+		echo '<button id="generate-summaraize-button" type="button">';
+		echo '<div class="summaraize-spinner" style="display: none;"></div>' . esc_html__( 'Generate Top 5 Points', 'summaraize' );
+		echo '</button>';
 
 		echo '<div id="summaraize-points-list" class="list-group" style="list-style: none; padding: 0;">';
 
@@ -75,16 +77,18 @@ class Summaraize_Admin_Metabox {
 
 			echo '<div class="summaraize-input-container" style="margin-bottom: 10px; display: flex; align-items: center;">';
 			echo '<span class="dashicons dashicons-menu" style="margin-right: 10px; cursor: move;"></span>';
-			echo '<input id="summaraize_points_' . esc_attr( $i + 1 ) . '" style="flex: 1; width: 100%;" type="text" name="summaraize_points[]" value="' . esc_attr( $point ) . '" placeholder="' . esc_attr( 'Empty points are not shown.' ) . '" />';
+			echo '<input id="summaraize_points_' . esc_attr( $i + 1 ) . '" style="flex: 1; width: 100%;" type="text" name="summaraize_points[]" value="' . esc_attr( $point ) . '" placeholder="' . esc_attr__( 'Empty points are not shown.', 'summaraize' ) . '" />';
 			echo '<button type="button" class="remove-point dashicons dashicons-trash" style="flex: 0 0 auto; margin-left: 10px; background: none; border: none; cursor: pointer; font-size: 20px; padding: 0; line-height: 1;" data-point-id="summaraize_points_' . esc_attr( $i + 1 ) . '"></button>';
 			echo '</div>';
 		}
 
 		echo '</div>';
 
+		// Override settings checkbox.
 		echo '<p><input type="checkbox" id="summaraize_override_settings" name="summaraize_override_settings" value="1"' . checked( 1, $override_settings, false ) . ' />';
 		echo '<label for="summaraize_override_settings">' . esc_html__( 'Override Settings', 'summaraize' ) . '</label></p>';
 
+		// Override options.
 		echo '<div id="summaraize_override_options" style="' . ( $override_settings ? '' : 'display:none;' ) . '">';
 
 		// View dropdown.
@@ -150,6 +154,16 @@ class Summaraize_Admin_Metabox {
 		echo '</select></p>';
 
 		echo '</div>';
+
+		// Modal HTML.
+		echo '
+	    <!-- Modal Overlay -->
+	    <div id="summaraize-error-modal" class="summaraize-modal" role="dialog" aria-labelledby="summaraize-modal-title" aria-modal="true" style="display: none;">
+	        <div class="summaraize-modal-content">
+	            <span class="summaraize-close" aria-label="Close Modal">&times;</span>
+	            <div id="summaraize-modal-message" tabindex="0"></div>
+	        </div>
+	    </div>';
 	}
 
 	/**

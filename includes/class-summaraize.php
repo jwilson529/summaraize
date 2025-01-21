@@ -1,31 +1,31 @@
 <?php
-/**
- * The file that defines the core plugin class
- *
- * A class definition that includes attributes and functions used across both the
- * public-facing side of the site and the admin area.
- *
- * @link       https://oneclickcontent.com
- * @since      1.0.0
- *
- * @package    Summaraize
- * @subpackage Summaraize/includes
- */
+	/**
+	 * The file that defines the core plugin class
+	 *
+	 * A class definition that includes attributes and functions used across both the
+	 * public-facing side of the site and the admin area.
+	 *
+	 * @link       https://oneclickcontent.com
+	 * @since      1.0.0
+	 *
+	 * @package    Summaraize
+	 * @subpackage Summaraize/includes
+	 */
 
-/**
- * The core plugin class.
- *
- * This is used to define internationalization, admin-specific hooks, and
- * public-facing site hooks.
- *
- * Also maintains the unique identifier of this plugin as well as the current
- * version of the plugin.
- *
- * @since      1.0.0
- * @package    Summaraize
- * @subpackage Summaraize/includes
- * @author     James Wilson <james@middletnwebdesign.com>
- */
+	/**
+	 * The core plugin class.
+	 *
+	 * This is used to define internationalization, admin-specific hooks, and
+	 * public-facing site hooks.
+	 *
+	 * Also maintains the unique identifier of this plugin as well as the current
+	 * version of the plugin.
+	 *
+	 * @since      1.0.0
+	 * @package    Summaraize
+	 * @subpackage Summaraize/includes
+	 * @author     James Wilson <james@middletnwebdesign.com>
+	 */
 class Summaraize {
 
 	/**
@@ -178,6 +178,7 @@ class Summaraize {
 		$this->loader->add_action( 'add_meta_boxes', $plugin_metabox, 'add_meta_box' );
 		$this->loader->add_action( 'save_post', $plugin_metabox, 'save_summaraize_points' );
 		$this->loader->add_action( 'admin_notices', $plugin_settings, 'display_admin_notices' );
+		$this->loader->add_action( 'plugin_action_links_', $plugin_settings, 'add_settings_link' );
 	}
 
 
@@ -191,53 +192,53 @@ class Summaraize {
 	private function define_public_hooks() {
 		$plugin_public = new Summaraize_Public( $this->get_plugin_name(), $this->get_version() );
 
-		// Enqueue styles and scripts.
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
+			// Enqueue styles and scripts.
+			$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
+			$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
 
-		// Register the shortcode separately.
-		$this->loader->add_action( 'init', $plugin_public, 'register_shortcodes', 1 );  // Very high priority to register early.
+			// Register the shortcode separately.
+			$this->loader->add_action( 'init', $plugin_public, 'register_shortcodes', 1 );  // Very high priority to register early.
 
-		// Append content automatically after the shortcode is processed.
-		$this->loader->add_action( 'the_content', $plugin_public, 'append_summaraize_to_content_automatically', 20 );  // Lower priority, so this fires after shortcodes.
+			// Append content automatically after the shortcode is processed.
+			$this->loader->add_action( 'the_content', $plugin_public, 'append_summaraize_to_content_automatically', 20 );  // Lower priority, so this fires after shortcodes.
 	}
 
-	/**
-	 * Run the loader to execute all of the hooks with WordPress.
-	 *
-	 * @since    1.0.0
-	 */
+		/**
+		 * Run the loader to execute all of the hooks with WordPress.
+		 *
+		 * @since    1.0.0
+		 */
 	public function run() {
 		$this->loader->run();
 	}
 
-	/**
-	 * The name of the plugin used to uniquely identify it within the context of
-	 * WordPress and to define internationalization functionality.
-	 *
-	 * @since     1.0.0
-	 * @return    string    The name of the plugin.
-	 */
+		/**
+		 * The name of the plugin used to uniquely identify it within the context of
+		 * WordPress and to define internationalization functionality.
+		 *
+		 * @since     1.0.0
+		 * @return    string    The name of the plugin.
+		 */
 	public function get_plugin_name() {
 		return $this->plugin_name;
 	}
 
-	/**
-	 * The reference to the class that orchestrates the hooks with the plugin.
-	 *
-	 * @since     1.0.0
-	 * @return    Summaraize_Loader    Orchestrates the hooks of the plugin.
-	 */
+		/**
+		 * The reference to the class that orchestrates the hooks with the plugin.
+		 *
+		 * @since     1.0.0
+		 * @return    Summaraize_Loader    Orchestrates the hooks of the plugin.
+		 */
 	public function get_loader() {
 		return $this->loader;
 	}
 
-	/**
-	 * Retrieve the version number of the plugin.
-	 *
-	 * @since     1.0.0
-	 * @return    string    The version number of the plugin.
-	 */
+		/**
+		 * Retrieve the version number of the plugin.
+		 *
+		 * @since     1.0.0
+		 * @return    string    The version number of the plugin.
+		 */
 	public function get_version() {
 		return $this->version;
 	}

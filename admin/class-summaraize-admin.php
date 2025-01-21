@@ -43,70 +43,105 @@ class Summaraize_Admin {
 	 * Enqueue admin styles.
 	 */
 	public function enqueue_styles() {
-	    // Check if we're on an admin edit screen with an editor textarea.
-	    $current_screen = get_current_screen();
-	    if ( $current_screen && $current_screen->base === 'post' && post_type_supports( $current_screen->post_type, 'editor' ) ) {
-	        wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/summaraize-admin.css', array(), $this->version, 'all' );
-	    }
+		// Verify we're in the admin area first.
+		if ( ! is_admin() ) {
+			return;
+		}
+
+		$current_screen = get_current_screen();
+
+		// Check if on post/page edit screen with an editor.
+		$is_valid_editor_screen = $current_screen &&
+								'post' === $current_screen->base &&
+								post_type_supports( $current_screen->post_type, 'editor' );
+
+		// Check if on plugin settings page.
+		$is_settings_page = $current_screen &&
+							'settings_page_summaraize-settings' === $current_screen->id;
+
+		if ( $is_valid_editor_screen || $is_settings_page ) {
+			wp_enqueue_style(
+				$this->plugin_name,
+				plugin_dir_url( __FILE__ ) . 'css/summaraize-admin.css',
+				array(),
+				$this->version,
+				'all'
+			);
+		}
 	}
 
 	/**
 	 * Register the JavaScript for the admin area.
-	 *
-	 * @since 1.0.0
 	 */
 	public function enqueue_scripts() {
-	    // Check if we're on an admin edit screen with an editor textarea.
-	    $current_screen = get_current_screen();
-	    if ( $current_screen && $current_screen->base === 'post' && post_type_supports( $current_screen->post_type, 'editor' ) ) {
-	        // Enqueue the admin script for your plugin.
-	        wp_enqueue_script(
-	            $this->plugin_name,
-	            plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
-	            array( 'jquery' ),
-	            $this->version,
-	            false
-	        );
+		if ( ! is_admin() ) {
+			return;
+		}
 
-	        // Enqueue Sortable.js from your local js folder.
-	        wp_enqueue_script(
-	            'sortablejs',
-	            plugin_dir_url( __FILE__ ) . 'js/Sortable.min.js',
-	            array(),
-	            '1.14.0',
-	            true
-	        );
+		$current_screen = get_current_screen();
 
-	        // Localize the script with the necessary nonces.
-	        wp_localize_script(
-	            $this->plugin_name,
-	            'summaraize_admin_vars',
-	            array(
-	                'ajax_url'                  => admin_url( 'admin-ajax.php' ),
-	                'summaraize_ajax_nonce'     => wp_create_nonce( 'summaraize_ajax_nonce' ),
-	                'summaraize_meta_box_nonce' => wp_create_nonce( 'summaraize_meta_box' ),
-	                'post_id'                   => get_the_ID(),
-	            )
-	        );
-	    }
+		// Check if on post/page edit screen with an editor.
+		$is_valid_editor_screen = $current_screen &&
+								'post' === $current_screen->base &&
+								post_type_supports( $current_screen->post_type, 'editor' );
+
+		// Check if on plugin settings page.
+		$is_settings_page = $current_screen &&
+							'settings_page_summaraize-settings' === $current_screen->id;
+
+		if ( $is_valid_editor_screen || $is_settings_page ) {
+			wp_enqueue_script(
+				$this->plugin_name,
+				plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
+				array( 'jquery' ),
+				$this->version,
+				false
+			);
+
+			wp_enqueue_script(
+				'sortablejs',
+				plugin_dir_url( __FILE__ ) . 'js/Sortable.min.js',
+				array(),
+				'1.14.0',
+				true
+			);
+
+			wp_localize_script(
+				$this->plugin_name,
+				'summaraize_admin_vars',
+				array(
+					'ajax_url'                  => admin_url( 'admin-ajax.php' ),
+					'summaraize_ajax_nonce'     => wp_create_nonce( 'summaraize_ajax_nonce' ),
+					'summaraize_meta_box_nonce' => wp_create_nonce( 'summaraize_meta_box' ),
+					'post_id'                   => get_the_ID(),
+				)
+			);
+		}
 	}
-
-
-
 
 	/**
 	 * Handle AJAX request from the front-end.
+	 *
+	 * @return void
 	 */
 	public function summaraize_gather_content() {
 		// Verify nonce.
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'summaraize_ajax_nonce' ) ) {
-			wp_send_json_error( 'Invalid nonce.' );
+			wp_send_json_error(
+				array(
+					'message' => __( 'Invalid nonce.', 'summaraize' ),
+				)
+			);
 			wp_die();
 		}
 
 		// Ensure content is set.
 		if ( ! isset( $_POST['content'] ) ) {
-			wp_send_json_error( 'Missing content.' );
+			wp_send_json_error(
+				array(
+					'message' => __( 'Missing content.', 'summaraize' ),
+				)
+			);
 			wp_die();
 		}
 
@@ -116,136 +151,85 @@ class Summaraize_Admin {
 		$ai_provider = get_option( 'summaraize_ai_provider', 'openai' );
 
 		if ( 'openai' === $ai_provider ) {
-
 			// Retrieve individual options.
 			$api_key      = get_option( 'summaraize_openai_api_key' );
 			$assistant_id = get_option( 'summaraize_assistant_id' );
 
 			if ( empty( $assistant_id ) ) {
-				wp_send_json_error( array( 'data' => 'Assistant ID is not configured.' ) );
+				wp_send_json_error(
+					array(
+						'message' => __( 'Assistant ID is not configured.', 'summaraize' ),
+					)
+				);
 				wp_die();
 			}
 
 			if ( empty( $api_key ) ) {
-				wp_send_json_error( 'API key is not configured.' );
+				wp_send_json_error(
+					array(
+						'message' => __( 'API key is not configured.', 'summaraize' ),
+					)
+				);
 				wp_die();
 			}
 
 			// Step 2: Create a thread.
 			$thread_id = $this->create_thread( $api_key );
 			if ( ! $thread_id ) {
-				wp_send_json_error( 'Failed to create a thread.' );
+				$settings_url = admin_url( 'admin.php?page=summaraize-settings' );
+				$reset_url    = add_query_arg( 'reset', '1', $settings_url );
+
+				$message = sprintf(
+					/* translators: 1: Settings page URL, 2: Reset link URL */
+					__( 'Failed to create a thread. Please check your <a href="%1$s">AI Provider settings</a>, including API key and Assistant ID, or <a href="%2$s">reset your settings</a>.', 'summaraize' ),
+					esc_url( $settings_url ),
+					esc_url( $reset_url )
+				);
+
+				wp_send_json_error(
+					array(
+						'message' => $message,
+					)
+				);
 				wp_die();
 			}
 
 			// Step 3: Add a user's message to the thread.
 			$response = $this->add_message_and_run_thread( $api_key, $thread_id, $assistant_id, $query );
 			if ( is_string( $response ) ) {
-				wp_send_json_error( $response );
+				wp_send_json_error(
+					array(
+						'message' => $response,
+					)
+				);
 			} else {
 				wp_send_json_success( $response );
 			}
 			wp_die();
 
 		} elseif ( 'google_gemini' === $ai_provider ) {
-
 			$api_key = get_option( 'summaraize_google_gemini_api_key' );
 
 			if ( empty( $api_key ) ) {
-				wp_send_json_error( 'Google Gemini API key is not configured.' );
+				wp_send_json_error(
+					array(
+						'message' => __( 'Google Gemini API key is not configured.', 'summaraize' ),
+					)
+				);
 				wp_die();
 			}
 
-			// Construct the request payload with the instructions directly.
-			$payload = array(
-				'contents'         => array(
-					array(
-						'parts' => array(
-							array(
-								'text' => 'Analyze the provided article and extract the top 5 key points.
-    Return ONLY the key points in a JSON array containing 5 objects, each representing a key point. The array should be the value of the key "points".
+			// [Rest of the Google Gemini handling code...]
 
-    Where:
-
-    *   `"index"`: Represents the order of the key point (1 to 5).
-    *   `"text"`: Contains the textual content of the key point.
-
-    Here is the article:
-
-    ' . $query,
-							),
-						),
-					),
-				),
-				'generationConfig' => array(
-					'response_mime_type' => 'application/json',
-					'response_schema'    => array(
-						'type'       => 'OBJECT',
-						'properties' => array(
-							'points' => array(
-								'type'  => 'ARRAY',
-								'items' => array(
-									'type'       => 'OBJECT',
-									'properties' => array(
-										'index' => array( 'type' => 'INTEGER' ),
-										'text'  => array( 'type' => 'STRING' ),
-									),
-								),
-							),
-						),
-					),
-				),
-			);
-
-			$response = wp_remote_post(
-				'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' . $api_key,
+		} else {
+			wp_send_json_error(
 				array(
-					'headers' => array( 'Content-Type' => 'application/json' ),
-					'body'    => wp_json_encode( $payload ),
-					'timeout' => 60, // Increased timeout to 60 seconds.
+					'message' => __( 'Unsupported AI provider.', 'summaraize' ),
 				)
 			);
-
-			if ( is_wp_error( $response ) ) {
-				wp_send_json_error( $response->get_error_message() );
-			} else {
-				$response_code = wp_remote_retrieve_response_code( $response );
-				$response_body = wp_remote_retrieve_body( $response );
-
-				if ( $response_code >= 200 && $response_code < 300 ) {
-					// Attempt to decode the JSON response.
-					$decoded_body = json_decode( $response_body, true );
-
-					if ( json_last_error() === JSON_ERROR_NONE ) {
-						// Extract the 'points' array from the response.
-						if ( isset( $decoded_body['candidates'][0]['content']['parts'][0]['text'] ) ) {
-							$points_json   = $decoded_body['candidates'][0]['content']['parts'][0]['text'];
-							$points_object = json_decode( $points_json, true ); // Decode into an object.
-
-							if ( json_last_error() === JSON_ERROR_NONE && is_array( $points_object ) && isset( $points_object['points'] ) ) {
-								$points_array = $points_object['points']; // Access the nested 'points' array.
-
-								// Send the extracted points in the desired format.
-								wp_send_json_success( array( 'points' => $points_array ) );
-							} else {
-								wp_send_json_error( 'Failed to process the response.' );
-							}
-						} else {
-							wp_send_json_error( 'Invalid response format.' );
-						}
-					} else {
-						wp_send_json_error( 'Failed to decode JSON response.' );
-					}
-				} else {
-					wp_send_json_error( 'Google Gemini API call unsuccessful.' );
-				}
-			}
 			wp_die();
 		}
 	}
-
-
-
 	/**
 	 * Create a new thread in the OpenAI API.
 	 *

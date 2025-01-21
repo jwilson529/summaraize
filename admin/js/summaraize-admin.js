@@ -36,6 +36,75 @@
             return { title, content, tags };
         }
 
+
+
+        /**
+         * Function to handle the reset=1 parameter on the settings page.
+         */
+        function handleResetParameter() {
+            console.log('[Summaraize] Checking for reset=1 parameter in URL.');
+            // Function to get URL parameters
+            function getUrlParameter(name) {
+                name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+                var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+                var results = regex.exec(location.search);
+                return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+            }
+
+            // Check if reset=1 is present in the URL
+            var resetParam = getUrlParameter('reset');
+            console.log('[Summaraize] reset parameter value:', resetParam);
+            if (resetParam === '1') {
+                // Find the Advanced Settings tab link
+                var $advancedTab = $('.nav-tab-wrapper a[href="#advanced-settings"]');
+                if ($advancedTab.length) {
+                    console.log('[Summaraize] Advanced Settings tab found. Switching to it.');
+                    // Trigger the click event to switch tabs
+                    $advancedTab.trigger('click');
+
+                    // After tab is switched, set the select box and trigger regeneration
+                    setTimeout(function() { // Ensure that the tab is fully switched
+                        var $aiModelSelect = $('#summaraize_ai_model');
+                        if ($aiModelSelect.length) {
+                            $aiModelSelect.val('gpt-4o-mini').trigger('change');
+                            console.log('[Summaraize] Set #summaraize_ai_model to "gpt-4o-mini".');
+                        } else {
+                            console.error('[Summaraize] Select box #summaraize_ai_model not found.');
+                        }
+
+                        // Trigger the Regenerate Assistant ID process
+                        triggerRegenerateAssistant();
+                    }, 300); // Adjust the timeout as necessary based on how tabs are handled
+                } else {
+                    console.error('[Summaraize] Advanced Settings tab link not found.');
+                }
+            }
+        }
+
+        /**
+         * Function to trigger the Regenerate Assistant ID process.
+         */
+        function triggerRegenerateAssistant() {
+            console.log('[Summaraize] Triggering Regenerate Assistant ID process.');
+            var $regenerateButton = $('#summariaze_create_assistant');
+            if ($regenerateButton.length) {
+                console.log('[Summaraize] Found Regenerate Assistant button. Clicking it.');
+                $regenerateButton.trigger('click');
+            } else {
+                console.error('[Summaraize] Regenerate Assistant button (#summariaze_create_assistant) not found.');
+            }
+        }
+
+        /**
+         * Define the function and call it immediately.
+         */
+        function initializeResetParameterHandler() {
+            handleResetParameter();
+        }
+
+        // Call the function immediately after definition
+        initializeResetParameterHandler();
+
         /**
          * Function to auto-save field values.A
          * @param $field
@@ -184,14 +253,55 @@
 
         // --- Event handlers ---
 
-        // Regenerate Assistant ID
+        /**
+         * Handle "Regenerate Assistant ID" button click.
+         */
         $(document).on('click', '#summariaze_create_assistant', function(event) {
             event.preventDefault();
+            console.log('[Summaraize] Regenerate Assistant ID button clicked.');
+
+            // Clear the assistant ID input field
             $('#summaraize_assistant_id').val('');
+            console.log('[Summaraize] Cleared #summaraize_assistant_id value.');
+
+            // Auto-save the cleared field
             autoSaveField($('#summaraize_assistant_id'));
+            console.log('[Summaraize] Called autoSaveField for #summaraize_assistant_id.');
+
+            // After a 1-second delay, remove the 'reset' parameter and reload the page
             setTimeout(function() {
-                window.location.reload();
-            }, 1000);
+                console.log('[Summaraize] Preparing to reload the page without reset=1 parameter.');
+
+                // Get the current URL
+                var currentUrl = window.location.href;
+                console.log('[Summaraize] Current URL:', currentUrl);
+
+                try {
+                    // Create a URL object
+                    var url = new URL(currentUrl);
+                    console.log('[Summaraize] URL object created:', url);
+
+                    // Remove the 'reset' parameter
+                    url.searchParams.delete('reset');
+                    console.log('[Summaraize] Removed "reset" parameter. New URL:', url.toString());
+
+                    // Reload the page with the updated URL
+                    window.location.href = url.toString();
+                    console.log('[Summaraize] Reloading the page without reset=1 parameter.');
+                } catch (e) {
+                    console.error('[Summaraize] Error manipulating URL:', e);
+
+                    // Fallback: Remove 'reset=1' using string manipulation if URL constructor fails
+                    var newUrl = currentUrl.replace(/([?&])reset=1(&|$)/, function(match, p1, p2) {
+                        return p1 === '?' ? '?' : p2 === '&' ? '&' : '';
+                    }).replace(/([?&])$/, ''); // Remove trailing '?' or '&' if present
+
+                    console.log('[Summaraize] Fallback method used. New URL:', newUrl);
+
+                    window.location.href = newUrl;
+                    console.log('[Summaraize] Reloading the page without reset=1 parameter using fallback method.');
+                }
+            }, 1000); // 1-second delay
         });
 
         // Remove a point from the list
@@ -255,6 +365,10 @@
                 animation: 'summaraize-spin 1s linear infinite',
                 marginRight: '8px'
             });
+            
+            // Clear any previous error messages
+            // Not needed as we're using a modal
+
             var editorData = getEditorData();
             $.ajax({
                     url: summaraize_admin_vars.ajax_url,
@@ -280,13 +394,55 @@
                                 inputField.val(point.text).change();
                             }
                         });
+                    } else if (!response.success && response.data && response.data.message) {
+                        // Display the error message in the modal
+                        $('#summaraize-modal-message').html(response.data.message);
+                        $('#summaraize-error-modal').fadeIn();
+                    } else {
+                        // Display a generic error message in the modal
+                        $('#summaraize-modal-message').text('An unexpected error occurred.');
+                        $('#summaraize-error-modal').fadeIn();
+                        console.error('AJAX Error: An unexpected error occurred.');
                     }
                 })
-                .fail(function() {
+                .fail(function(jqXHR, textStatus, errorThrown) {
                     $button.prop('disabled', false);
                     $spinner.hide();
                     $button.text('Generate Top 5 Points');
+                    // Display AJAX failure message in the modal
+                    $('#summaraize-modal-message').text('AJAX request failed: ' + textStatus);
+                    $('#summaraize-error-modal').fadeIn();
+                    console.error('AJAX Fail:', textStatus, errorThrown);
                 });
+        });
+
+        // Handle clicks on the close button
+        $(document).on('click', '.summaraize-close', function() {
+            $('#summaraize-error-modal').fadeOut();
+        });
+
+        // Handle clicks outside the modal content to close the modal
+        $(window).on('click', function(event) {
+            var $modal = $('#summaraize-error-modal');
+            if (event.target.id === 'summaraize-error-modal') {
+                $modal.fadeOut();
+            }
+        });
+
+        // Handle clicks on links with data-fill-defaults attribute within the modal message
+        $(document).on('click', '#summaraize-modal-message a[data-fill-defaults="1"]', function(event) {
+            event.preventDefault();
+            var $link = $(this);
+            var settingsUrl = $link.attr('href');
+
+            // Example: Open the settings page in a new tab
+            window.open(settingsUrl, '_blank');
+
+            // Optionally, you can perform additional actions here, such as focusing on specific fields
+            // or pre-filling forms if needed.
+
+            // Hide the modal after handling
+            $('#summaraize-error-modal').fadeOut();
         });
 
         // Toggle settings fields based on display mode

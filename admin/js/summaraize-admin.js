@@ -42,7 +42,6 @@
          * Function to handle the reset=1 parameter on the settings page.
          */
         function handleResetParameter() {
-            console.log('[Summaraize] Checking for reset=1 parameter in URL.');
             // Function to get URL parameters
             function getUrlParameter(name) {
                 name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
@@ -53,12 +52,10 @@
 
             // Check if reset=1 is present in the URL
             var resetParam = getUrlParameter('reset');
-            console.log('[Summaraize] reset parameter value:', resetParam);
             if (resetParam === '1') {
                 // Find the Advanced Settings tab link
                 var $advancedTab = $('.nav-tab-wrapper a[href="#advanced-settings"]');
                 if ($advancedTab.length) {
-                    console.log('[Summaraize] Advanced Settings tab found. Switching to it.');
                     // Trigger the click event to switch tabs
                     $advancedTab.trigger('click');
 
@@ -67,7 +64,6 @@
                         var $aiModelSelect = $('#summaraize_ai_model');
                         if ($aiModelSelect.length) {
                             $aiModelSelect.val('gpt-4o-mini').trigger('change');
-                            console.log('[Summaraize] Set #summaraize_ai_model to "gpt-4o-mini".');
                         } else {
                             console.error('[Summaraize] Select box #summaraize_ai_model not found.');
                         }
@@ -85,10 +81,8 @@
          * Function to trigger the Regenerate Assistant ID process.
          */
         function triggerRegenerateAssistant() {
-            console.log('[Summaraize] Triggering Regenerate Assistant ID process.');
             var $regenerateButton = $('#summariaze_create_assistant');
-            if ($regenerateButton.length) {
-                console.log('[Summaraize] Found Regenerate Assistant button. Clicking it.');
+            if ($regenerateButton.length) {                
                 $regenerateButton.trigger('click');
             } else {
                 console.error('[Summaraize] Regenerate Assistant button (#summariaze_create_assistant) not found.');
@@ -256,38 +250,30 @@
         /**
          * Handle "Regenerate Assistant ID" button click.
          */
-        $(document).on('click', '#summariaze_create_assistant', function(event) {
-            event.preventDefault();
-            console.log('[Summaraize] Regenerate Assistant ID button clicked.');
+        $(document).on('click', '.summariaze_create_assistant', function(event) {
+            event.preventDefault();            
 
             // Clear the assistant ID input field
-            $('#summaraize_assistant_id').val('');
-            console.log('[Summaraize] Cleared #summaraize_assistant_id value.');
+            $('#summaraize_assistant_id').val('');            
 
             // Auto-save the cleared field
-            autoSaveField($('#summaraize_assistant_id'));
-            console.log('[Summaraize] Called autoSaveField for #summaraize_assistant_id.');
+            autoSaveField($('#summaraize_assistant_id'));            
 
             // After a 1-second delay, remove the 'reset' parameter and reload the page
-            setTimeout(function() {
-                console.log('[Summaraize] Preparing to reload the page without reset=1 parameter.');
+            setTimeout(function() {                
 
                 // Get the current URL
-                var currentUrl = window.location.href;
-                console.log('[Summaraize] Current URL:', currentUrl);
+                var currentUrl = window.location.href;                
 
                 try {
                     // Create a URL object
-                    var url = new URL(currentUrl);
-                    console.log('[Summaraize] URL object created:', url);
+                    var url = new URL(currentUrl);                    
 
                     // Remove the 'reset' parameter
-                    url.searchParams.delete('reset');
-                    console.log('[Summaraize] Removed "reset" parameter. New URL:', url.toString());
+                    url.searchParams.delete('reset');                    
 
                     // Reload the page with the updated URL
-                    window.location.href = url.toString();
-                    console.log('[Summaraize] Reloading the page without reset=1 parameter.');
+                    window.location.href = url.toString();                    
                 } catch (e) {
                     console.error('[Summaraize] Error manipulating URL:', e);
 
@@ -295,11 +281,9 @@
                     var newUrl = currentUrl.replace(/([?&])reset=1(&|$)/, function(match, p1, p2) {
                         return p1 === '?' ? '?' : p2 === '&' ? '&' : '';
                     }).replace(/([?&])$/, ''); // Remove trailing '?' or '&' if present
+                    
 
-                    console.log('[Summaraize] Fallback method used. New URL:', newUrl);
-
-                    window.location.href = newUrl;
-                    console.log('[Summaraize] Reloading the page without reset=1 parameter using fallback method.');
+                    window.location.href = newUrl;                    
                 }
             }, 1000); // 1-second delay
         });
@@ -383,7 +367,6 @@
                     }
                 })
                 .done(function(response) {
-                    console.log("AJAX response:", response);
                     $button.prop('disabled', false);
                     $spinner.hide();
                     $button.text('Generate Top 5 Points');

@@ -22,12 +22,20 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 		if ( empty( $value ) ) {
 			// Attempt to create a new assistant if none exists.
 			$assistant_id = $this->summaraize_create_assistant();
-			$value        = $assistant_id ? $assistant_id : 'Failed to create assistant';
+			$value        = $assistant_id ? $assistant_id : __( 'Failed to create assistant', 'summaraize' );
 			update_option( 'summaraize_assistant_id', $value );
 		}
 
 		echo '<input type="text" id="summaraize_assistant_id" name="summaraize_assistant_id" value="' . esc_attr( $value ) . '" />';
 		echo '<p class="description">' . esc_html__( 'Enter the Assistant ID provided by OpenAI or leave as is to use the auto-generated one.', 'summaraize' ) . '</p>';
+
+		// Add the Regenerate Assistant button.
+		echo '<div>';
+		echo '<button class="button button-secondary summariaze_create_assistant">';
+		echo esc_html__( 'Regenerate Assistant', 'summaraize' );
+		echo '</button>';
+		echo '<p class="description">' . esc_html__( 'This will clear the current Assistant ID and generate a new one.', 'summaraize' ) . '</p>';
+		echo '</div>';
 	}
 
 

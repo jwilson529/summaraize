@@ -20,13 +20,14 @@ jobs:
       - name: Create Temporary Working Directory
         run: |
           mkdir temp_dir
-          git clone --depth 1 --branch ${{ github.ref_name }} . temp_dir
+          rsync -av --progress ./ temp_dir --exclude=node_modules --exclude=vendor --exclude=.git --exclude=.github --exclude=".*" --exclude=*.json --exclude=*.xml --exclude=*.lock --exclude=*.md
           cd temp_dir
 
-      # Remove dev files (only in temp_dir)
-      - name: Remove Dev Files
+      # Remove hidden files and other dev files (failsafe step)
+      - name: Remove Dev and Hidden Files
         run: |
-          rm -rf node_modules vendor .git .github *.gitignore *.zipignore check.txt composer.json phpmd.txt package.json package-lock.json phpmd.xml README.md
+          find . -name ".*" -exec rm -rf {} \; || true
+          rm -rf node_modules vendor .git .github *.gitignore *.zipignore composer.json phpmd.txt phpmd.xml package.json package-lock.json README.md
 
       # Setup PHP environment
       - name: Setup PHP
@@ -50,3 +51,5 @@ jobs:
       # Run Plugin Check
       - name: Run Plugin Check
         uses: wordpress/plugin-check-action@v1
+        with:
+          path: temp_dir

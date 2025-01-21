@@ -76,7 +76,7 @@ class Summaraize_Admin_Settings {
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Reset Assistant ID', 'summaraize' ); ?></th>
 							<td>
-								<button id="summariaze_create_assistant" class="button button-secondary">
+								<button class="button button-secondary summariaze_create_assistant">
 									<?php esc_html_e( 'Regenerate Assistant', 'summaraize' ); ?>
 								</button>
 								<p class="description"><?php esc_html_e( 'This will clear the current Assistant ID and generate a new one.', 'summaraize' ); ?></p>
@@ -154,22 +154,22 @@ class Summaraize_Admin_Settings {
 				array( 'label_for' => 'summaraize_openai_api_key' )
 			);
 
-			// Register Assistant ID setting and field.
-			register_setting( 'summaraize_settings', 'summaraize_assistant_id' );
-			add_settings_field(
-				'summaraize_assistant_id',
-				__( 'Assistant ID', 'summaraize' ),
-				array( $openai_settings, 'summaraize_assistant_id_callback' ),
-				'summaraize_settings',
-				'summaraize_settings_section',
-				array( 'label_for' => 'summaraize_assistant_id' )
-			);
-
 			// Retrieve the API key.
 			$open_api_key = get_option( 'summaraize_openai_api_key' );
 
 			// Check if the API key is valid.
 			if ( ! empty( $open_api_key ) && Summaraize_OpenAI_Settings::validate_openai_api_key( $open_api_key ) ) {
+				// Register Assistant ID setting and field.
+				register_setting( 'summaraize_settings', 'summaraize_assistant_id' );
+				add_settings_field(
+					'summaraize_assistant_id',
+					__( 'Assistant ID', 'summaraize' ),
+					array( $openai_settings, 'summaraize_assistant_id_callback' ),
+					'summaraize_settings',
+					'summaraize_settings_section',
+					array( 'label_for' => 'summaraize_assistant_id' )
+				);
+
 				$this->register_summaraize_main_settings_fields();
 				$openai_settings->register_summaraize_advanced_settings_fields();
 			} else {

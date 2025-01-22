@@ -1,4 +1,4 @@
-=== SummarAIze - AI-Powered Key Takeaways for WordPress ===
+=== SummarAIze – Generate Key Takeaways with AI ===
 Contributors: jwilson529
 Donate link: https://oneclickcontent.com/donate/
 Tags: ai, summary, content-enhancement, engagement, OpenAI, Google Gemini

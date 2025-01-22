@@ -208,18 +208,99 @@ class Summaraize_Admin {
 			wp_die();
 
 		} elseif ( 'google_gemini' === $ai_provider ) {
+
 			$api_key = get_option( 'summaraize_google_gemini_api_key' );
 
 			if ( empty( $api_key ) ) {
-				wp_send_json_error(
-					array(
-						'message' => __( 'Google Gemini API key is not configured.', 'summaraize' ),
-					)
-				);
+				wp_send_json_error( 'Google Gemini API key is not configured.' );
 				wp_die();
 			}
 
-			// [Rest of the Google Gemini handling code...]
+			// Construct the request payload with the instructions directly.
+			$payload = array(
+				'contents'         => array(
+					array(
+						'parts' => array(
+							array(
+								'text' => 'Analyze the provided article and extract the top 5 key points.
+    Return ONLY the key points in a JSON array containing 5 objects, each representing a key point. The array should be the value of the key "points".
+
+    Where:
+
+    *   `"index"`: Represents the order of the key point (1 to 5).
+    *   `"text"`: Contains the textual content of the key point.
+
+    Here is the article:
+
+    ' . $query,
+							),
+						),
+					),
+				),
+				'generationConfig' => array(
+					'response_mime_type' => 'application/json',
+					'response_schema'    => array(
+						'type'       => 'OBJECT',
+						'properties' => array(
+							'points' => array(
+								'type'  => 'ARRAY',
+								'items' => array(
+									'type'       => 'OBJECT',
+									'properties' => array(
+										'index' => array( 'type' => 'INTEGER' ),
+										'text'  => array( 'type' => 'STRING' ),
+									),
+								),
+							),
+						),
+					),
+				),
+			);
+
+			$response = wp_remote_post(
+				'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' . $api_key,
+				array(
+					'headers' => array( 'Content-Type' => 'application/json' ),
+					'body'    => wp_json_encode( $payload ),
+					'timeout' => 60, // Increased timeout to 60 seconds.
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				wp_send_json_error( $response->get_error_message() );
+			} else {
+				$response_code = wp_remote_retrieve_response_code( $response );
+				$response_body = wp_remote_retrieve_body( $response );
+
+				if ( $response_code >= 200 && $response_code < 300 ) {
+					// Attempt to decode the JSON response.
+					$decoded_body = json_decode( $response_body, true );
+
+					if ( json_last_error() === JSON_ERROR_NONE ) {
+						// Extract the 'points' array from the response.
+						if ( isset( $decoded_body['candidates'][0]['content']['parts'][0]['text'] ) ) {
+							$points_json   = $decoded_body['candidates'][0]['content']['parts'][0]['text'];
+							$points_object = json_decode( $points_json, true ); // Decode into an object.
+
+							if ( json_last_error() === JSON_ERROR_NONE && is_array( $points_object ) && isset( $points_object['points'] ) ) {
+								$points_array = $points_object['points']; // Access the nested 'points' array.
+
+								// Send the extracted points in the desired format.
+								wp_send_json_success( array( 'points' => $points_array ) );
+							} else {
+								wp_send_json_error( 'Failed to process the response.' );
+							}
+						} else {
+							wp_send_json_error( 'Invalid response format.' );
+						}
+					} else {
+						wp_send_json_error( 'Failed to decode JSON response.' );
+					}
+				} else {
+					wp_send_json_error( 'Google Gemini API call unsuccessful.' );
+				}
+			}
+			wp_die();
 
 		} else {
 			wp_send_json_error(

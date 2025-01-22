@@ -1,7 +1,7 @@
 === SummarAIze – Generate Key Takeaways with AI ===
 Contributors: jwilson529
 Donate link: https://oneclickcontent.com/donate/
-Tags: ai, summary, content-enhancement, engagement, OpenAI, Google Gemini
+Tags: ai, summary, content-enhancement, OpenAI, Google Gemini
 Requires at least: 5.0
 Tested up to: 6.7
 Stable tag: 1.1.14

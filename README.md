@@ -24,18 +24,16 @@ SummarAIze relies on the OpenAI API to generate key takeaways. This means that d
 
 ## Drag-and-Drop Feature
 
-You can now easily reorder your points using the drag-and-drop functionality. Here's how:
+You can now easily reorder your points using the drag-and-drop functionality:
 
-- Hover over the point you want to reorder.
-- Click and hold the "menu" icon (represented by the three lines) to the left of the point.
-- Drag the point to your desired position in the list.
-- The new order is automatically updated and saved when you publish or update the post.
+1. Hover over the point you want to reorder.
+2. Click and hold the "menu" icon (represented by the three lines) to the left of the point.
+3. Drag the point to your desired position in the list.
+4. The new order is automatically updated and saved when you publish or update the post.
 
 Empty points will be removed from the front-end display automatically, ensuring only meaningful points are shown to your users.
 
 ## Shortcode Documentation
-
-The Summaraize shortcode is used to display the top 5 key points for a post. You can customize the display with several attributes, such as the view mode, color, and button style.
 
 ### Basic Shortcode Usage:
 
@@ -43,155 +41,115 @@ The Summaraize shortcode is used to display the top 5 key points for a post. You
 
 ### Available Attributes:
 
-**id (optional):**  
-The post ID for which to display the key points. If not provided, the shortcode will use the current post's ID.
-Example: `[summaraize id="123"]`
+- **`id`** *(optional)*:  
+  The post ID for which to display the key points. Default: current post ID.  
+  Example: `[summaraize id="123"]`
 
-**view (optional):**  
-Defines where the output should be positioned relative to the post content. Possible values are:
-– `popup`: Renders a popup button that displays the key points in a modal when clicked.
-Default: `above`
-Example: `[summaraize view="popup"]`
+- **`view`** *(optional)*:  
+  Defines where the output should be positioned relative to the post content.  
+  Possible values: `popup`, `above`, `below`.  
+  Default: `above`.  
+  Example: `[summaraize view="popup"]`
 
-**mode (optional):**  
-Sets the display mode for light or dark theme. Possible values:
-– `light`: Light theme.
-– `dark`: Dark theme.
-Default: `light`
-Example: `[summaraize mode="dark"]`
+- **`mode`** *(optional)*:  
+  Sets the display mode for light or dark themes.  
+  Possible values: `light`, `dark`.  
+  Default: `light`.  
+  Example: `[summaraize mode="dark"]`
 
-**title (optional):**  
-Sets a custom title for the key points widget or popup. If no custom title is provided, the default "Key Takeaways" will be used.
-Example: `[summaraize title="Quick Summary"]`
+- **`title`** *(optional)*:  
+  Sets a custom title for the key points widget or popup.  
+  Default: "Key Takeaways".  
+  Example: `[summaraize title="Quick Summary"]`
 
-**button_style (optional):**  
-Defines the button style when using the popup view. Possible values: `flat`, `rounded`, etc.
-Default: `flat`
-Example: `[summaraize view="popup" button_style="rounded"]`
+- **`button_style`** *(optional)*:  
+  Defines the popup button style.  
+  Default: `flat`.  
+  Example: `[summaraize view="popup" button_style="rounded"]`
 
-**button_color (optional):**  
-Sets the background color of the popup button. Use any valid hex color code.
-Default: `#0073aa`
-Example: `[summaraize view="popup" button_color="#ff0000"]`
+- **`button_color`** *(optional)*:  
+  Sets the background color of the popup button.  
+  Default: `#0073aa`.  
+  Example: `[summaraize view="popup" button_color="#ff0000"]`
 
-**list_type (optional):**  
-Specifies how the key points list is displayed. Possible values:
-– `ordered`: Displays an ordered list (`<ol>`).
-– `unordered`: Displays an unordered list (`<ul>`).
-Default: `unordered`
-Example: `[summaraize list_type="ordered"]`
+- **`list_type`** *(optional)*:  
+  Specifies how the key points list is displayed.  
+  Possible values: `ordered`, `unordered`.  
+  Default: `unordered`.  
+  Example: `[summaraize list_type="ordered"]`
 
 ### Example Usage:
 
-Basic Usage (displays the key points above the content with default settings): `[summaraize]`
-
-Customizing the Position and Style (displays the key points in a popup with a red button and rounded style): `[summaraize view="popup" button_style="rounded" button_color="#ff0000"]`
-
-Using a Custom Title and Dark Mode: `[summaraize mode="dark" title="Quick Summary"]`
-
-Displaying an Ordered List Below the Content: `[summaraize view="below" list_type="ordered"]`
+- Basic Usage: `[summaraize]`
+- Popup Style: `[summaraize view="popup" button_style="rounded" button_color="#ff0000"]`
+- Dark Mode with Custom Title: `[summaraize mode="dark" title="Quick Summary"]`
+- Ordered List Below Content: `[summaraize view="below" list_type="ordered"]`
 
 ## Installation
 
 1. Upload the plugin files to the `/wp-content/plugins/summaraize` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Navigate to Settings->SummarAIze to configure the plugin.
+3. Navigate to **Settings > SummarAIze** to configure the plugin.
 4. Enter your OpenAI API key.
 5. Optionally, configure your Assistant ID in the OpenAI Playground.
 
-## Important Note
+## Privacy
 
-The Assistant ID configures the behavior and responses of the SummarAIze assistant. Users must use their own OpenAI API key for authentication and billing.
+SummarAIze takes your privacy seriously. The plugin only sends the necessary content to OpenAI's servers for generating key points. No personal data or sensitive information is transmitted. However, please be aware that the content you choose to summarize will be processed by OpenAI. Review OpenAI's [Privacy Policy](https://openai.com/privacy) for details.
 
 ## Frequently Asked Questions
 
-### How does SummarAIze generate key points?
+### Do I need an API key?
+Yes. SummarAIze relies on the OpenAI API, which requires an active API key.
 
-SummarAIze uses advanced AI algorithms to analyze your post content and extract the top 5 key points. This process is managed through the OpenAI API, ensuring high-quality and relevant summaries.
+### Can I customize how the key points appear?
+Yes! Use the plugin's settings or shortcode attributes to tailor the display to your needs.
 
-### Can I customize the display of the key points?
-
-Yes! SummarAIze offers several customization options. You can choose to display key points above or below your content, switch between dark and light modes, and even use a popup version with customizable buttons. Additionally, you can override the main settings per post or page by using the provided options.
-
-### What happens if I don’t provide an API key?
-
-The plugin requires an OpenAI API key to function. Without it, the AI-driven features will not be available. Please ensure you have an active OpenAI account and understand the associated costs before using the plugin.
+### Are there costs for using SummarAIze?
+The plugin is free, but OpenAI API usage may incur costs based on their pricing.
 
 ### How secure is the data transmitted to OpenAI?
-
-Data security is a priority. The plugin only transmits the necessary content to OpenAI's servers to generate key points. No other information is shared. Please review OpenAI's [Privacy Policy](https://openai.com/privacy) for more details on how they handle data.
-
-### How can I get support if I run into issues?
-
-If you encounter any issues or have questions about using SummarAIze, you can get support through the [WordPress support forums](https://wordpress.org/support/plugin/summaraize) or by visiting the [official website](https://oneclickcontent.com).
+Only the necessary content is sent to OpenAI's servers. No personal or sensitive data is shared.
 
 ## Screenshots
 
-1. ![Above or Below Content](assets/above-or-below-content.png)
+1. ![Above or Below Content](assets/above-or-below-content.png)  
    *Configure whether the key points appear above or below the content.*
 
-2. ![Dark Mode](assets/dark-mode.png)
+2. ![Dark Mode](assets/dark-mode.png)  
    *Display key points in dark mode for a better visual experience.*
 
-3. ![Classic Editor](assets/classic-editor.png)
+3. ![Classic Editor](assets/classic-editor.png)  
    *Interface for generating and editing key points in the Classic Editor.*
 
-4. ![Popup View](assets/popup-view.png)
+4. ![Popup View](assets/popup-view.png)  
    *Display key points in a popup view.*
 
-5. ![Settings Screen](assets/settings-screen.png)
+5. ![Settings Screen](assets/settings-screen.png)  
    *The settings page for configuring display options.*
 
-6. ![Drag and Drop Ordering](assets/DragDropOrdering.png)
+6. ![Drag and Drop Ordering](assets/DragDropOrdering.png)  
    *Reorder key points easily with drag-and-drop functionality.*
 
 ## Changelog
 
-### 1.1.13
-* Fixed metabox data saving issue.
-* Improved UI for metabox inputs.
-* Minor bug fixes and optimizations.
+### 1.1.14
+- Fixed metabox data saving issue.
+- Improved UI for metabox inputs.
+- Minor bug fixes and optimizations.
 
 ### 1.1.11
-* Added drag-and-drop functionality to reorder points in the admin interface.
-* Enhanced the system to automatically remove empty points from the front-end display.
-* Improved meta box save functionality, ensuring data is only saved upon post publish/update.
-* Added frontend filtering to prevent empty list items from being displayed.
-* Cleaned up the JavaScript for smoother handling of point removal.
-* Adjusted sanitization logic for the sorted points to prevent potential security issues.
-
+- Added drag-and-drop functionality to reorder points.
+- Automatically removes empty points from the display.
 
 ### 1.1.10
-* Added shortcode with attributes so that you could use it anywhere.
-* Improved detection of processed shortcodes and generated HTML to prevent duplication.
-* Added a more robust detection mechanism for Gutenberg blocks and shortcodes within the content.
-* Updated the logic for appending the shortcode automatically only when necessary.
-
-### 1.1.9
-* Added advanced settings tab for customizing the Assistant's prompt type, custom instructions, and AI model.
-* Implemented model selection dropdown with a default option set to gpt-4o-mini.
-* Improved UI with updated CSS for a more polished look.
-* Added a warning message in the advanced settings tab to inform users about the need to regenerate the Assistant after changing certain settings.
-* Improved AJAX auto-save functionality to handle empty values correctly.
-
-### 1.1.8
-* Added option to display key points as ordered or unordered lists.
-* Improved handling of floating images with wrapped and cleared output.
-* Updated documentation and readme.
-
-### 1.1.4
-* Updated readme file to include the details of the 3rd party services being used.
+- Added shortcode customization options for layout and style.
 
 ### 1.1.0
-* Changed from using a static Assistant to generating the Assistant via the API.
+- Enabled dynamic Assistant creation via API.
 
 ### 1.0.0
-* Initial release
-
-## Upgrade Notice
-
-### 1.1.7
-* Added ordered/unordered list options for displaying key points. Improved handling of floating images. Ensure you update to benefit from these improvements.
+- Initial release.
 
 ## License
 

@@ -133,7 +133,7 @@ Only the necessary content is sent to OpenAI's servers. No personal or sensitive
 
 ## Changelog
 
-### 1.1.14
+### 1.1.16
 - Fixed metabox data saving issue.
 - Improved UI for metabox inputs.
 - Minor bug fixes and optimizations.

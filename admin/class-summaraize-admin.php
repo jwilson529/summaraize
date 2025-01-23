@@ -229,7 +229,7 @@ class Summaraize_Admin {
 
     *   `"index"`: Represents the order of the key point (1 to 5).
     *   `"text"`: Contains the textual content of the key point.
-
+    Respond in the language of the provided article.
     Here is the article:
 
     ' . $query,

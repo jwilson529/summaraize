@@ -81,7 +81,7 @@
          * Function to trigger the Regenerate Assistant ID process.
          */
         function triggerRegenerateAssistant() {
-            var $regenerateButton = $('#summariaze_create_assistant');
+            var $regenerateButton = $('.summariaze_create_assistant');
             if ($regenerateButton.length) {                
                 $regenerateButton.trigger('click');
             } else {

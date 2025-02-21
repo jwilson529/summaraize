@@ -258,7 +258,7 @@ class Summaraize_Admin {
 			);
 
 			$response = wp_remote_post(
-				'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=' . $api_key,
+				'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . $api_key,
 				array(
 					'headers' => array( 'Content-Type' => 'application/json' ),
 					'body'    => wp_json_encode( $payload ),

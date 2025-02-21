@@ -1,37 +1,51 @@
-# SummarAIze - Generate Key Takeaways with AI
+# SummarAIze - Unlock the Power of AI Summaries for WordPress
 
 ![Plugin Banner](assets/banner-772x250.png)
 
 ## Description
 
-**SummarAIze** is a powerful WordPress plugin designed to automatically generate and display the top 5 key points from your posts. With AI-driven content summarization, this plugin enhances your articles by providing readers with quick and engaging takeaways, making your content more accessible and easier to digest.
+**Stop Losing Readers! Instantly Grab Attention with AI-Powered Summaries.** SummarAIze uses OpenAI or Google Gemini to boost engagement and SEO!
 
-Whether you're a blogger looking to highlight essential points or a marketer wanting to ensure your audience gets the most out of your content, SummarAIze helps improve user engagement and retention by providing concise, easily digestible summaries.
+**Tired of visitors bouncing from your WordPress site? Wish there was a way to instantly show them the value of your content?**
+
+SummarAIze is the *secret weapon* you need. This powerful, yet incredibly easy-to-use, plugin leverages the cutting-edge AI of **both OpenAI and Google Gemini** to automatically generate concise, engaging summaries (key takeaways) for your posts and pages.
+
+**Here's how SummarAIze will transform your WordPress site:**
+
+*   **Boost Reader Engagement:** Hook readers instantly with clear, concise summaries that highlight the most important points of your content.
+*   **Improve Readability:** Make even complex articles easy to digest, leading to increased time on site and lower bounce rates.
+*   **Enhance SEO:** Provide search engines with structured, keyword-rich summaries, improving your search visibility.
+*   **Save Time & Effort:** Stop manually writing summaries! SummarAIze automates the process, freeing you up to focus on creating great content.
+*   **Choose Your AI Powerhouse:** Select between the industry-leading **OpenAI** or the innovative **Google Gemini** – you're in control!
+*   **Supercharge Your Content, Effortlessly.** Installation takes minutes, and the results are immediate.
 
 ### Important Information
 
-SummarAIze relies on the OpenAI API to generate key takeaways. This means that data from your site will be sent to OpenAI's servers for processing, and results will be returned to your site. By using this plugin, you agree to OpenAI's [Terms of Use](https://openai.com/terms) and [Privacy Policy](https://openai.com/privacy).
+SummarAIze uses either the **OpenAI API** or the **Google Gemini API** for summary generation. This requires sending your post content to the selected provider's servers. By using this plugin, you agree to their respective terms and policies:
+
+*   **OpenAI:** [Terms of Use](https://openai.com/terms) and [Privacy Policy](https://openai.com/privacy)
+*   **Google Gemini:** [Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms)
 
 ## Features
 
-- **AI-Powered Content Summarization**: Automatically generate top 5 key points from post content using AI.
-- **Customizable Display Options**: Display key points in various styles and positions to suit your theme.
-- **Ordered or Unordered Lists**: Choose between an ordered list (numbered) or an unordered list (bulleted) for displaying key points.
-- **User-Friendly Interface**: Easily manage and customize key points for each post or page.
-- **Flexible API Integration**: Integrate with your own OpenAI API key, allowing for control over usage and billing.
-- **Assistant Configuration**: Use the default Assistant ID or configure your own in the OpenAI Playground.
-- **Enhance SEO and Readability**: Improve your content’s SEO by providing search engines with structured summaries, and enhance readability for your audience.
+*   **Dual AI Engines:** Unleash the power of *either* OpenAI *or* Google Gemini – the choice is yours! Easily switch between providers in the settings.
+*   **Automatic Summary Generation:** No more manual work! SummarAIze intelligently extracts the top 5 key takeaways from your content.
+*   **Flexible Display Options:** Show summaries *above* your content, *below* it, or even in a slick *popup* – perfect for any theme.
+*   **Drag-and-Drop Simplicity:** Reorder key takeaways with ease using the intuitive drag-and-drop interface.
+*   **Customizable Appearance:** Use shortcodes to control list style (ordered/unordered), light/dark mode, and even popup button styling.
+*   **SEO Friendly:** Structured summaries help search engines understand your content better.
+*   **Privacy Conscious:** Only the necessary content is sent to the selected AI provider (OpenAI or Google Gemini) for processing.
 
 ## Drag-and-Drop Feature
 
-You can now easily reorder your points using the drag-and-drop functionality:
+You can easily reorder your key takeaways using the drag-and-drop functionality:
 
-1. Hover over the point you want to reorder.
-2. Click and hold the "menu" icon (represented by the three lines) to the left of the point.
-3. Drag the point to your desired position in the list.
-4. The new order is automatically updated and saved when you publish or update the post.
+1.  Hover over the point you want to reorder.
+2.  Click and hold the "menu" icon (represented by the three lines) to the left of the point.
+3.  Drag the point to your desired position in the list.
+4.  The new order is automatically updated and saved when you publish or update the post.
 
-Empty points will be removed from the front-end display automatically, ensuring only meaningful points are shown to your users.
+Empty points will be removed from the front-end display automatically.
 
 ## Shortcode Documentation
 
@@ -41,115 +55,93 @@ Empty points will be removed from the front-end display automatically, ensuring 
 
 ### Available Attributes:
 
-- **`id`** *(optional)*:  
-  The post ID for which to display the key points. Default: current post ID.  
-  Example: `[summaraize id="123"]`
-
-- **`view`** *(optional)*:  
-  Defines where the output should be positioned relative to the post content.  
-  Possible values: `popup`, `above`, `below`.  
-  Default: `above`.  
-  Example: `[summaraize view="popup"]`
-
-- **`mode`** *(optional)*:  
-  Sets the display mode for light or dark themes.  
-  Possible values: `light`, `dark`.  
-  Default: `light`.  
-  Example: `[summaraize mode="dark"]`
-
-- **`title`** *(optional)*:  
-  Sets a custom title for the key points widget or popup.  
-  Default: "Key Takeaways".  
-  Example: `[summaraize title="Quick Summary"]`
-
-- **`button_style`** *(optional)*:  
-  Defines the popup button style.  
-  Default: `flat`.  
-  Example: `[summaraize view="popup" button_style="rounded"]`
-
-- **`button_color`** *(optional)*:  
-  Sets the background color of the popup button.  
-  Default: `#0073aa`.  
-  Example: `[summaraize view="popup" button_color="#ff0000"]`
-
-- **`list_type`** *(optional)*:  
-  Specifies how the key points list is displayed.  
-  Possible values: `ordered`, `unordered`.  
-  Default: `unordered`.  
-  Example: `[summaraize list_type="ordered"]`
+*   **`id`** *(optional)*: The post ID for which to display the key points. Default: current post ID.  Example: `[summaraize id="123"]`
+*   **`view`** *(optional)*: Defines where the output should be positioned. Possible values: `popup`, `above`, `below`. Default: `above`. Example: `[summaraize view="popup"]`
+*   **`mode`** *(optional)*: Sets the display mode (light or dark). Possible values: `light`, `dark`. Default: `light`. Example: `[summaraize mode="dark"]`
+*   **`title`** *(optional)*: Sets a custom title. Default: "Key Takeaways". Example: `[summaraize title="Quick Summary"]`
+*   **`button_style`** *(optional)*: Defines the popup button style (if `view="popup"`). Default: `flat`. Example: `[summaraize view="popup" button_style="rounded"]`
+*   **`button_color`** *(optional)*: Sets the popup button background color (if `view="popup"`). Default: `#0073aa`. Example: `[summaraize view="popup" button_color="#ff0000"]`
+*   **`list_type`** *(optional)*: Specifies the list display (ordered or unordered). Possible values: `ordered`, `unordered`. Default: `unordered`. Example: `[summaraize list_type="ordered"]`
 
 ### Example Usage:
 
-- Basic Usage: `[summaraize]`
-- Popup Style: `[summaraize view="popup" button_style="rounded" button_color="#ff0000"]`
-- Dark Mode with Custom Title: `[summaraize mode="dark" title="Quick Summary"]`
-- Ordered List Below Content: `[summaraize view="below" list_type="ordered"]`
+*   Basic Usage: `[summaraize]`
+*   Popup Style: `[summaraize view="popup" button_style="rounded" button_color="#ff0000"]`
+*   Dark Mode with Custom Title: `[summaraize mode="dark" title="Quick Summary"]`
+*   Ordered List Below Content: `[summaraize view="below" list_type="ordered"]`
 
 ## Installation
 
-1. Upload the plugin files to the `/wp-content/plugins/summaraize` directory, or install the plugin through the WordPress plugins screen directly.
-2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Navigate to **Settings > SummarAIze** to configure the plugin.
-4. Enter your OpenAI API key.
-5. Optionally, configure your Assistant ID in the OpenAI Playground.
+1.  Upload the `summaraize` folder to the `/wp-content/plugins/` directory, or install the plugin directly via the WordPress plugins screen (search for "SummarAIze").
+2.  Activate the plugin through the 'Plugins' menu in WordPress.
+3.  Go to Settings > SummarAIze. Select your preferred AI provider (OpenAI or Google Gemini) and enter your API key.
 
 ## Privacy
 
-SummarAIze takes your privacy seriously. The plugin only sends the necessary content to OpenAI's servers for generating key points. No personal data or sensitive information is transmitted. However, please be aware that the content you choose to summarize will be processed by OpenAI. Review OpenAI's [Privacy Policy](https://openai.com/privacy) for details.
+SummarAIze only sends the content of your posts to the selected AI provider (OpenAI or Google Gemini) for processing. No personal or sensitive data is transmitted.
 
 ## Frequently Asked Questions
 
 ### Do I need an API key?
-Yes. SummarAIze relies on the OpenAI API, which requires an active API key.
 
-### Can I customize how the key points appear?
-Yes! Use the plugin's settings or shortcode attributes to tailor the display to your needs.
+Yes, you'll need an API key for *either* OpenAI *or* Google Gemini. Both services offer free tiers (subject to their terms), but higher usage may require a paid account.
 
-### Are there costs for using SummarAIze?
-The plugin is free, but OpenAI API usage may incur costs based on their pricing.
+### Can I customize the summaries?
 
-### How secure is the data transmitted to OpenAI?
-Only the necessary content is sent to OpenAI's servers. No personal or sensitive data is shared.
+Absolutely! You can edit the generated key takeaways directly in the post editor, and you can use shortcodes to control how they are displayed.
+
+### How much does SummarAIze cost?
+
+The SummarAIze plugin itself is **free and open-source**. However, using the OpenAI or Google Gemini APIs may incur costs, depending on your usage and their pricing plans.
+
+### How do I switch between OpenAI and Google Gemini?
+
+It's easy! Just go to Settings > SummarAIze, choose your preferred provider, and enter the corresponding API key.
+
+### Is my data safe?
+
+SummarAIze only sends the content of your posts to the selected AI provider for processing. No personal or sensitive data is shared.
 
 ## Screenshots
 
-1. ![Above or Below Content](assets/above-or-below-content.png)  
-   *Configure whether the key points appear above or below the content.*
-
-2. ![Dark Mode](assets/dark-mode.png)  
-   *Display key points in dark mode for a better visual experience.*
-
-3. ![Classic Editor](assets/classic-editor.png)  
-   *Interface for generating and editing key points in the Classic Editor.*
-
-4. ![Popup View](assets/popup-view.png)  
-   *Display key points in a popup view.*
-
-5. ![Settings Screen](assets/settings-screen.png)  
-   *The settings page for configuring display options.*
-
-6. ![Drag and Drop Ordering](assets/DragDropOrdering.png)  
-   *Reorder key points easily with drag-and-drop functionality.*
+1.  ![Above or Below Content](assets/above-or-below-content.png) *Configure whether the key points appear above or below the content.*
+2.  ![Dark Mode](assets/dark-mode.png) *Display key points in dark mode for a better visual experience.*
+3.  ![Classic Editor](assets/classic-editor.png) *Interface for generating and editing key points in the Classic Editor.*
+4.  ![Popup View](assets/popup-view.png) *Display key points in a popup view.*
+5.  ![Settings Screen](assets/settings-screen.png) *The settings page for configuring display options.*
+6.  ![Drag and Drop Ordering](assets/DragDropOrdering.png) *Reorder key points easily with drag-and-drop functionality.*
 
 ## Changelog
 
+### 1.2.0
+
+*   **Major Feature:** Added full support for the Google Gemini API, including configuration options in the settings page.
+*   Updated documentation to reflect Gemini integration.
+*   Improved error handling for API requests.
+*   General code cleanup and optimization.
+
 ### 1.1.16
-- Fixed metabox data saving issue.
-- Improved UI for metabox inputs.
-- Minor bug fixes and optimizations.
+
+*   Fixed metabox data saving issue.
+*   Improved UI for metabox inputs.
+*   Minor bug fixes and optimizations.
 
 ### 1.1.11
-- Added drag-and-drop functionality to reorder points.
-- Automatically removes empty points from the display.
+
+*   Added drag-and-drop functionality to reorder points.
+*   Automatically removes empty points from the display.
 
 ### 1.1.10
-- Added shortcode customization options for layout and style.
+
+*   Added shortcode customization options for layout and style.
 
 ### 1.1.0
-- Enabled dynamic Assistant creation via API.
+
+*   Enabled dynamic Assistant creation via API.
 
 ### 1.0.0
-- Initial release.
+
+*   Initial release.
 
 ## License
 
@@ -158,3 +150,5 @@ This plugin is licensed under the GPLv2 or later.
 ## Donate
 
 If you find this plugin useful, please consider [donating](https://oneclickcontent.com/donate/) to support further development.
+
+**Ready to transform your WordPress content and boost engagement? Install SummarAIze today!**

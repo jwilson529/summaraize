@@ -44,3 +44,5 @@ wp-config.php
 
 # Example for ignoring a custom cache directory (replace 'custom_cache/' with your actual directory)
 # custom_cache/
+phpmd.txt
+package.json

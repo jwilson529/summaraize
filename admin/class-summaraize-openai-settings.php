@@ -346,9 +346,29 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	 * Register the advanced settings fields if the API key is valid.
 	 */
 	public function register_summaraize_advanced_settings_fields() {
-		register_setting( 'summaraize_settings_advanced', 'summaraize_prompt_type' );
-		register_setting( 'summaraize_settings_advanced', 'summaraize_custom_prompt' );
-		register_setting( 'summaraize_settings_advanced', 'summaraize_ai_model' );
+		register_setting(
+			'summaraize_settings_advanced',
+			'summaraize_prompt_type',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings_advanced',
+			'summaraize_custom_prompt',
+			array(
+				'sanitize_callback' => 'sanitize_textarea_field',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings_advanced',
+			'summaraize_ai_model',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 
 		add_settings_field(
 			'summaraize_prompt_type',

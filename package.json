@@ -4,12 +4,15 @@
   "description": "=== Plugin Name === Contributors: (this should be a list of wordpress.org userid's) Donate link: https://oneclickcontent.com/ Tags: comments, spam Requires at least: 3.0.1 Tested up to: 3.4 Stable tag: 4.3 License: GPLv2 or later License URI: http://www.gnu.org/licenses/gpl-2.0.html",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "fix": "phpcbf -d error_reporting=\"E_ALL&~E_DEPRECATED\" --ignore=*/vendor/*,*/node_modules/* --standard=WordPress --extensions=php .",
-    "check": "phpcs -d error_reporting=\"E_ALL&~E_DEPRECATED\" --ignore=*/vendor/*,*/node_modules/* --standard=WordPress --extensions=php . > check.txt",
-    "phpmd": "phpmd . text phpmd.xml --exclude vendor,node_modules > phpmd.txt",
-    "dist": "find . -name '.DS_Store' -type f -delete && zip -r summaraize.zip . -x \"node_modules/*\" \"assets/*\" \"*.git/*\" \"*.github/*\" \"*.gitignore\" \"*.zipignore\" \"vendor/*\" \"check.txt\" \"composer.json\" \"phpmd.txt\" \"package.json\" \"package-lock.json\" \"phpmd.xml\" \"README.md\"",
-    "plugin-check": "wp plugin check ."
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "fix": "phpcbf -d error_reporting=\"E_ALL&~E_DEPRECATED\" --ignore=*/vendor/*,*/node_modules/* --standard=WordPress --extensions=php .",
+      "check": "phpcs -d error_reporting=\"E_ALL&~E_DEPRECATED\" --ignore=*/vendor/*,*/node_modules/* --standard=WordPress --extensions=php . > check.txt",
+      "phpmd": "phpmd . text phpmd.xml --exclude vendor,node_modules > phpmd.txt",
+      "dist": "find . -name '.DS_Store' -type f -delete && zip -r summaraize.zip . -x \"node_modules/*\" \"assets/*\" \"*.git/*\" \"*.github/*\" \"*.gitignore\" \"*.zipignore\" \"vendor/*\" \"check.txt\" \"composer.json\" \"phpmd.txt\" \"package.json\" \"package-lock.json\" \"phpmd.xml\" \"README.md\"",
+      "plugin-check": "wp plugin check .",
+      "update-wpcs": "composer global require wp-coding-standards/wpcs --update-with-all-dependencies",
+      "update-phpcs": "composer global require squizlabs/php_codesniffer --update-with-all-dependencies",
+      "refresh-phpcs": "phpcs --clear-cache && phpcs --config-set installed_paths ~/.composer/vendor/wp-coding-standards/wpcs"
   },
   "repository": {
     "type": "git",

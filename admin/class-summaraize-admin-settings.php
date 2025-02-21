@@ -160,7 +160,13 @@ class Summaraize_Admin_Settings {
 			// Check if the API key is valid.
 			if ( ! empty( $open_api_key ) && Summaraize_OpenAI_Settings::validate_openai_api_key( $open_api_key ) ) {
 				// Register Assistant ID setting and field.
-				register_setting( 'summaraize_settings', 'summaraize_assistant_id' );
+				register_setting(
+					'summaraize_settings',
+					'summaraize_assistant_id',
+					array(
+						'sanitize_callback' => 'sanitize_text_field',
+					)
+				);
 				add_settings_field(
 					'summaraize_assistant_id',
 					__( 'Assistant ID', 'summaraize' ),
@@ -208,14 +214,61 @@ class Summaraize_Admin_Settings {
 		// Instantiate the OpenAI settings class.
 		$openai_settings = new Summaraize_OpenAI_Settings();
 
-		register_setting( 'summaraize_settings', 'summaraize_post_types' );
+		register_setting(
+			'summaraize_settings',
+			'summaraize_post_types',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 
-		register_setting( 'summaraize_settings', 'summaraize_widget_title' );
-		register_setting( 'summaraize_settings', 'summaraize_display_position' );
-		register_setting( 'summaraize_settings', 'summaraize_display_mode' );
-		register_setting( 'summaraize_settings', 'summaraize_button_style' );
-		register_setting( 'summaraize_settings', 'summaraize_button_color' );
-		register_setting( 'summaraize_settings', 'summaraize_list_type' );
+		register_setting(
+			'summaraize_settings',
+			'summaraize_widget_title',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings',
+			'summaraize_display_position',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings',
+			'summaraize_display_mode',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings',
+			'summaraize_button_style',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings',
+			'summaraize_button_color',
+			array(
+				'sanitize_callback' => 'sanitize_hex_color',
+			)
+		);
+
+		register_setting(
+			'summaraize_settings',
+			'summaraize_list_type',
+			array(
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 
 		add_settings_field(
 			'summaraize_post_types',

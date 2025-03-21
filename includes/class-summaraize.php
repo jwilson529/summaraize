@@ -120,6 +120,7 @@ class Summaraize {
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-openai-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-google-gemini-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-oneclickcontent-settings.php';
 
 		/**
 		 * The class responsible for defining all metabox items.
@@ -160,11 +161,12 @@ class Summaraize {
 	 */
 	private function define_admin_hooks() {
 
-		$plugin_admin    = new Summaraize_Admin( $this->get_plugin_name(), $this->get_version() );
-		$plugin_settings = new Summaraize_Admin_Settings();
-		$plugin_openai   = new Summaraize_OpenAI_Settings();
-		$plugin_gemini   = new Summaraize_Google_Gemini_Settings();
-		$plugin_metabox  = new Summaraize_Admin_Metabox();
+		$plugin_admin        = new Summaraize_Admin( $this->get_plugin_name(), $this->get_version() );
+		$plugin_settings     = new Summaraize_Admin_Settings();
+		$plugin_openai       = new Summaraize_OpenAI_Settings();
+		$plugin_gemini       = new Summaraize_Google_Gemini_Settings();
+		$plugin_metabox      = new Summaraize_Admin_Metabox();
+		$plugin_occ_settings = new Summaraize_Oneclickcontent_Settings();
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );

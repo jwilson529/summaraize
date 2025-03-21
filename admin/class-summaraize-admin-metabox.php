@@ -66,7 +66,8 @@ class Summaraize_Admin_Metabox {
 		$list_type         = get_post_meta( $post->ID, 'summaraize_list_type', true );
 
 		echo '<button id="generate-summaraize-button" type="button">';
-		echo '<div class="summaraize-spinner" style="display: none;"></div>' . esc_html__( 'Generate Top 5 Points', 'summaraize' );
+		echo '<div class="summaraize-spinner" style="display: none;"></div>';
+		echo '<span class="button-text">' . esc_html__( 'Generate Top 5 Points', 'summaraize' ) . '</span>';
 		echo '</button>';
 
 		echo '<div id="summaraize-points-list" class="list-group" style="list-style: none; padding: 0;">';

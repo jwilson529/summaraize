@@ -1,4 +1,4 @@
-# SummarAIze - Unlock the Power of AI Summaries for WordPress
+# SummarAIze – Automatically create TL;DRs for your posts
 
 ![Plugin Banner](assets/banner-772x250.png)
 
@@ -113,7 +113,7 @@ SummarAIze only sends the content of your posts to the selected AI provider for 
 
 ## Changelog
 
-### 1.2.0
+### 1.2.1
 
 *   **Major Feature:** Added full support for the Google Gemini API, including configuration options in the settings page.
 *   Updated documentation to reflect Gemini integration.

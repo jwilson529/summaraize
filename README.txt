@@ -1,10 +1,10 @@
-=== SummarAIze – Unlock the Power of AI Summaries for WordPress ===
+=== SummarAIze – Automatically create TL;DRs for your posts ===
 Contributors: jwilson529
 Donate link: https://oneclickcontent.com/donate/
 Tags: ai, summary, content-enhancement, OpenAI, Google Gemini, key takeaways, engagement, readability, SEO, productivity
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -81,6 +81,9 @@ SummarAIze only sends the content of your posts to the selected AI provider for 
 
 == Changelog ==
 
+= 1.2.1 =
+* Updated URL for Google Gemini. 
+
 = 1.2.0 =
 *   **Major Feature:** Added full support for the Google Gemini API, including configuration options in the settings page.
 *   Updated documentation to reflect Gemini integration.
@@ -105,7 +108,7 @@ SummarAIze only sends the content of your posts to the selected AI provider for 
 
 == Upgrade Notice ==
 
-= 1.2.0 =
+= 1.2.1 =
 
 **Unlock the power of Google Gemini!** This major update adds full support for Google Gemini, giving you even more AI options.  Be sure to update and enter your Google Gemini API key (or stick with OpenAI – the choice is yours!).
 

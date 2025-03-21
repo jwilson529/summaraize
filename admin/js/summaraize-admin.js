@@ -338,7 +338,12 @@
             event.preventDefault();
             var $button = $(this);
             $button.prop('disabled', true);
+
+            // Get spinner and text elements
             var $spinner = $button.find('.summaraize-spinner');
+            var $text    = $button.find('.button-text');
+
+            // Show spinner
             $spinner.css({
                 display: 'inline-block',
                 width: '16px',
@@ -349,10 +354,8 @@
                 animation: 'summaraize-spin 1s linear infinite',
                 marginRight: '8px'
             });
-            
-            // Clear any previous error messages
-            // Not needed as we're using a modal
 
+            // Retrieve editor data and make the AJAX call
             var editorData = getEditorData();
             $.ajax({
                     url: summaraize_admin_vars.ajax_url,
@@ -367,22 +370,21 @@
                     }
                 })
                 .done(function(response) {
+                    console.log(response);
                     $button.prop('disabled', false);
                     $spinner.hide();
-                    $button.text('Generate Top 5 Points');
+                    $text.text('Generate Top 5 Points');
                     if (response.success && response.data.points) {
-                        response.data.points.forEach(function(point) {
-                            var inputField = $('#summaraize_points_' + point.index);
+                        response.data.points.forEach(function(point, index) {
+                            var inputField = $('#summaraize_points_' + (index + 1));
                             if (inputField.length) {
                                 inputField.val(point.text).change();
                             }
                         });
                     } else if (!response.success && response.data && response.data.message) {
-                        // Display the error message in the modal
                         $('#summaraize-modal-message').html(response.data.message);
                         $('#summaraize-error-modal').fadeIn();
                     } else {
-                        // Display a generic error message in the modal
                         $('#summaraize-modal-message').text('An unexpected error occurred.');
                         $('#summaraize-error-modal').fadeIn();
                         console.error('AJAX Error: An unexpected error occurred.');
@@ -391,8 +393,7 @@
                 .fail(function(jqXHR, textStatus, errorThrown) {
                     $button.prop('disabled', false);
                     $spinner.hide();
-                    $button.text('Generate Top 5 Points');
-                    // Display AJAX failure message in the modal
+                    $text.text('Generate Top 5 Points');
                     $('#summaraize-modal-message').text('AJAX request failed: ' + textStatus);
                     $('#summaraize-error-modal').fadeIn();
                     console.error('AJAX Fail:', textStatus, errorThrown);

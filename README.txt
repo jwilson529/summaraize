@@ -9,11 +9,9 @@ Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-**Grab Attention, Boost SEO – Automatically.** SummarAIze uses OpenAI or Google Gemini to generate powerful summaries that improve engagement, readability, and search visibility.
+AI-powered post summaries using OpenAI or Google Gemini. Instantly boost engagement, SEO, and readability with smart key takeaways.
 
 == Description ==
-
-**Tired of visitors bouncing from your WordPress site? Wish there was a way to instantly show them the value of your content?**
 
 SummarAIze is the *secret weapon* you need. This powerful, yet incredibly easy-to-use plugin leverages cutting-edge AI from **OpenAI** or **Google Gemini** to automatically generate concise, engaging summaries (key takeaways) for your posts and pages.
 

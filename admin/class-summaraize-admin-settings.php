@@ -664,8 +664,20 @@ class Summaraize_Admin_Settings {
 			wp_send_json_error( array( 'message' => __( 'Invalid points data.', 'summaraize' ) ) );
 		}
 
-		// Sanitize each point in the array..
-		$sanitized_points = array_map( 'sanitize_text_field', $sorted_points );
+               // Sanitize each point in the array while allowing anchor tags..
+               $allowed_tags    = array(
+                       'a' => array(
+                               'href'   => array(),
+                               'target' => array(),
+                               'rel'    => array(),
+                       ),
+               );
+               $sanitized_points = array_map(
+                       function ( $point ) use ( $allowed_tags ) {
+                               return wp_kses( $point, $allowed_tags );
+                       },
+                       $sorted_points
+               );
 
 		// Save the sorted points as post meta.
 		if ( update_post_meta( $post_id, 'summaraize_points', $sanitized_points ) ) {

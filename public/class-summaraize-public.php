@@ -177,11 +177,18 @@ class Summaraize_Public {
 			echo '<h2>' . esc_html( $widget_title ) . '</h2>';
 
 			// Choose list type.
-			echo ( 'ordered' === $list_type ) ? '<ol>' : '<ul>';
-			foreach ( $summaraize_points as $point ) {
-				echo '<li>' . esc_html( $point ) . '</li>';
-			}
-			echo ( 'ordered' === $list_type ) ? '</ol>' : '</ul>';
+                       echo ( 'ordered' === $list_type ) ? '<ol>' : '<ul>';
+                       foreach ( $summaraize_points as $point ) {
+                               $allowed_tags = array(
+                                       'a' => array(
+                                               'href'   => array(),
+                                               'target' => array(),
+                                               'rel'    => array(),
+                                       ),
+                               );
+                               echo '<li>' . wp_kses( $point, $allowed_tags ) . '</li>';
+                       }
+                       echo ( 'ordered' === $list_type ) ? '</ol>' : '</ul>';
 
 			echo '</div>';
 			echo '</div>';
@@ -191,11 +198,18 @@ class Summaraize_Public {
 			echo '<h2>' . esc_html( $widget_title ) . '</h2>';
 
 			// Choose list type.
-			echo ( 'ordered' === $list_type ) ? '<ol>' : '<ul>';
-			foreach ( $summaraize_points as $point ) {
-				echo '<li>' . esc_html( $point ) . '</li>';
-			}
-			echo ( 'ordered' === $list_type ) ? '</ol>' : '</ul>';
+                       echo ( 'ordered' === $list_type ) ? '<ol>' : '<ul>';
+                       foreach ( $summaraize_points as $point ) {
+                               $allowed_tags = array(
+                                       'a' => array(
+                                               'href'   => array(),
+                                               'target' => array(),
+                                               'rel'    => array(),
+                                       ),
+                               );
+                               echo '<li>' . wp_kses( $point, $allowed_tags ) . '</li>';
+                       }
+                       echo ( 'ordered' === $list_type ) ? '</ol>' : '</ul>';
 
 			echo '</div>';
 		}

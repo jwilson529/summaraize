@@ -384,9 +384,6 @@ class Summaraize_Admin_Settings {
 		$ai_provider = get_option( 'summaraize_ai_provider', 'oneclickcontent' );
 		?>
 		<select name="summaraize_ai_provider" id="summaraize_ai_provider">
-			<option value="oneclickcontent" <?php selected( $ai_provider, 'oneclickcontent' ); ?>>
-				<?php esc_html_e( 'OneClickContent', 'summaraize' ); ?>
-			</option>
 			<option value="openai" <?php selected( $ai_provider, 'openai' ); ?>>
 				<?php esc_html_e( 'OpenAI', 'summaraize' ); ?>
 			</option>
@@ -662,7 +659,7 @@ class Summaraize_Admin_Settings {
 		}
 
 		// Sanitize each point in the array while allowing anchor tags.
-		$allowed_tags = array(
+		$allowed_tags     = array(
 			'a' => array(
 				'href'   => array(),
 				'target' => array(),
@@ -675,7 +672,7 @@ class Summaraize_Admin_Settings {
 			},
 			$sorted_points
 		);
-		
+
 		if ( update_post_meta( $post_id, 'summaraize_points', $sanitized_points ) ) {
 			wp_send_json_success( array( 'message' => __( 'Points reordered and saved.', 'summaraize' ) ) );
 		} else {

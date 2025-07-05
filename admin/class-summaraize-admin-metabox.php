@@ -196,27 +196,34 @@ class Summaraize_Admin_Metabox {
 		}
 
 		// Save 'summaraize_points' directly if set.
-               if ( isset( $_POST['summaraize_points'] ) && is_array( $_POST['summaraize_points'] ) ) {
-                       // Sanitize each point while allowing anchor tags.
-                       $allowed_tags     = array(
-                               'a' => array(
-                                       'href'   => array(),
-                                       'target' => array(),
-                                       'rel'    => array(),
-                               ),
-                       );
-                       $summaraize_points = array_map(
-                               function ( $point ) use ( $allowed_tags ) {
-                                       return wp_kses( wp_unslash( $point ), $allowed_tags );
-                               },
-                               $_POST['summaraize_points']
-                       );
+		if ( isset( $_POST['summaraize_points'] ) ) {
+			$raw_points_post = null;
 
-			// Optionally, remove empty points.
-			$summaraize_points = array_filter( $summaraize_points, 'strlen' );
+			if ( isset( $_POST['summaraize_points'] ) ) {
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Unsanitized input is immediately sanitized below.
+				$raw_points_post = wp_unslash( $_POST['summaraize_points'] );
+			}
 
-			// Update the meta field.
-			update_post_meta( $post_id, 'summaraize_points', $summaraize_points );
+			if ( is_array( $raw_points_post ) ) {
+				$allowed_tags = array(
+					'a' => array(
+						'href'   => array(),
+						'target' => array(),
+						'rel'    => array(),
+					),
+				);
+
+				$summaraize_points = array_map(
+					function ( $point ) use ( $allowed_tags ) {
+						return wp_kses( $point, $allowed_tags );
+					},
+					$raw_points_post
+				);
+
+				$summaraize_points = array_filter( $summaraize_points, 'strlen' );
+
+				update_post_meta( $post_id, 'summaraize_points', $summaraize_points );
+			}
 		}
 
 		// Save override settings and other options.

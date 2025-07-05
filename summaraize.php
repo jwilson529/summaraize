@@ -15,7 +15,7 @@
  * Plugin Name:       SummarAIze – Automatically create TL;DRs for your posts
  * Plugin URI:        https://oneclickcontent.com
  * Description:       Bring your own OpenAI API key to instantly distill your posts into 5 key takeaways, boosting reader engagement and making your content more digestible at a glance.
- * Version:           1.2.1
+ * Version:           1.2.3
  * Author:            James Wilson
  * Author URI:        https://oneclickcontent.com/
  * License:           GPL-2.0+
@@ -36,7 +36,7 @@ if ( ! defined( 'WPINC' ) ) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SUMMARAIZE_VERSION', '1.2.1' );
+define( 'SUMMARAIZE_VERSION', '1.2.3' );
 
 /**
  * The code that runs during plugin activation.

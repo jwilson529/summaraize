@@ -113,6 +113,14 @@ SummarAIze only sends the content of your posts to the selected AI provider for 
 
 ## Changelog
 
+
+### 1.2.3
+
+*   Improved compatibility with WordPress 6.7.
+*   Enhanced sanitization for key takeaway input.
+*   Fixed issues with link rendering in summary points.
+
+
 ### 1.2.1
 
 *   **Major Feature:** Added full support for the Google Gemini API, including configuration options in the settings page.

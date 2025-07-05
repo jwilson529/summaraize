@@ -196,9 +196,21 @@ class Summaraize_Admin_Metabox {
 		}
 
 		// Save 'summaraize_points' directly if set.
-		if ( isset( $_POST['summaraize_points'] ) && is_array( $_POST['summaraize_points'] ) ) {
-			// Sanitize each point.
-			$summaraize_points = array_map( 'sanitize_text_field', wp_unslash( $_POST['summaraize_points'] ) );
+               if ( isset( $_POST['summaraize_points'] ) && is_array( $_POST['summaraize_points'] ) ) {
+                       // Sanitize each point while allowing anchor tags.
+                       $allowed_tags     = array(
+                               'a' => array(
+                                       'href'   => array(),
+                                       'target' => array(),
+                                       'rel'    => array(),
+                               ),
+                       );
+                       $summaraize_points = array_map(
+                               function ( $point ) use ( $allowed_tags ) {
+                                       return wp_kses( wp_unslash( $point ), $allowed_tags );
+                               },
+                               $_POST['summaraize_points']
+                       );
 
 			// Optionally, remove empty points.
 			$summaraize_points = array_filter( $summaraize_points, 'strlen' );

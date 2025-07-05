@@ -1,9 +1,9 @@
 === SummarAIze – Automatically create TL;DRs for your posts ===
 Contributors: jwilson529
 Donate link: https://oneclickcontent.com/donate/
-Tags: ai, summary, content-enhancement, OpenAI, Google Gemini, key takeaways, engagement, readability, SEO, productivity
+Tags: ai, summary, openai, google gemini, seo
 Requires at least: 5.0
-Tested up to: 6.7
+Tested up to: 6.8
 Stable tag: 1.2.3
 Requires PHP: 7.2
 License: GPLv2 or later

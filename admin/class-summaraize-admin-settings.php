@@ -186,11 +186,11 @@ class Summaraize_Admin_Settings {
 	private function register_summaraize_main_settings_fields() {
 		// Register main plugin settings.
 		register_setting(
-			'summaraize_settings',
-			'summaraize_post_types',
-			array(
-				'sanitize_callback' => 'sanitize_text_field',
-			)
+		    'summaraize_settings',
+		    'summaraize_post_types',
+		    array(
+		        'sanitize_callback' => array( $this, 'sanitize_post_types' ),
+		    )
 		);
 
 		register_setting(
@@ -296,6 +296,19 @@ class Summaraize_Admin_Settings {
 			'summaraize_settings',
 			'summaraize_settings_section'
 		);
+	}
+
+	/**
+	 * Sanitize the post types array.
+	 *
+	 * @param mixed $value The value to sanitize.
+	 * @return array Sanitized array of post types.
+	 */
+	public function sanitize_post_types( $value ) {
+	    if ( ! is_array( $value ) ) {
+	        return array(); // Return an empty array if the input isn’t an array.
+	    }
+	    return array_map( 'sanitize_text_field', $value ); // Sanitize each element.
 	}
 
 	/**
@@ -559,79 +572,69 @@ class Summaraize_Admin_Settings {
 	}
 
 	/**
-	 * Handles AJAX requests for saving settings or post meta.
+	 * Handles AJAX requests for saving SummarAIze settings or post meta.
 	 *
-	 * Checks security, validates inputs, and returns a JSON response.
+	 * This method is used to save options or metadata dynamically via AJAX.
+	 * It ensures security, validates inputs, and handles both option saving
+	 * and specific post meta updates.
 	 *
-	 * @return void JSON success or error response.
+	 * @return void Outputs JSON success or error response.
 	 */
 	public function summaraize_auto_save() {
-		// Check AJAX nonce.
-		check_ajax_referer( 'summaraize_ajax_nonce', 'nonce' );
-
-		// Verify user capability.
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'summaraize' ) ) );
-		}
-
-		// Ensure the field name is provided.
-		if ( empty( $_POST['field_name'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Missing field name.', 'summaraize' ) ) );
-		}
-
-		// Sanitize the field name.
-		$field_name = sanitize_text_field( wp_unslash( $_POST['field_name'] ) );
-
-		// Special case: handle sorted points.
-		if ( 'summaraize_points_sorted' === $field_name ) {
-			$this->handle_points_sorted();
-			return;
-		}
-
-		// Define allowed option keys.
-		$allowed_options = array(
-			'summaraize_openai_api_key',
-			'summaraize_post_types',
-			'summaraize_assistant_id',
-			'summaraize_widget_title',
-			'summaraize_display_position',
-			'summaraize_display_mode',
-			'summaraize_button_style',
-			'summaraize_button_color',
-			'summaraize_list_type',
-			'summaraize_ai_model',
-			'summaraize_ai_provider',
-			'summaraize_google_gemini_api_key',
-		);
-
-		// Sanitize and validate the option key.
-		$option_key = sanitize_key( str_replace( '[]', '', $field_name ) );
-		if ( ! in_array( $option_key, $allowed_options, true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid option key.', 'summaraize' ) ) );
-		}
-
-		// Sanitize the field value.
-		if ( isset( $_POST['field_value'] ) && is_array( $_POST['field_value'] ) ) {
-			$field_value = array_map( 'sanitize_text_field', wp_unslash( $_POST['field_value'] ) );
-		} else {
-			$field_value = isset( $_POST['field_value'] ) ? sanitize_text_field( wp_unslash( $_POST['field_value'] ) ) : '';
-		}
-
-		// Save the option.
-		if ( update_option( $option_key, $field_value ) || get_option( $option_key ) === $field_value ) {
-			if ( 'summaraize_ai_provider' === $option_key ) {
-				wp_send_json_success(
-					array(
-						'message' => __( 'Option saved. Refreshing page...', 'summaraize' ),
-						'refresh' => true,
-					)
-				);
-			} else {
-				wp_send_json_success( array( 'message' => __( 'Option saved.', 'summaraize' ) ) );
-			}
-		} else {
-			wp_send_json_error( array( 'message' => __( 'Failed to save option.', 'summaraize' ) ) );
-		}
+	    check_ajax_referer( 'summaraize_ajax_nonce', 'nonce' );
+	    if ( ! current_user_can( 'manage_options' ) ) {
+	        wp_send_json_error( array( 'message' => __( 'Permission denied.', 'summaraize' ) ) );
+	    }
+	    if ( empty( $_POST['field_name'] ) ) {
+	        wp_send_json_error( array( 'message' => __( 'Missing field name.', 'summaraize' ) ) );
+	    }
+	    $field_name = sanitize_text_field( wp_unslash( $_POST['field_name'] ) );
+	    if ( 'summaraize_points_sorted' === $field_name ) {
+	        $this->handle_points_sorted();
+	        return;
+	    }
+	    $allowed_options = array(
+	        'summaraize_openai_api_key',
+	        'summaraize_post_types',
+	        'summaraize_assistant_id',
+	        'summaraize_widget_title',
+	        'summaraize_display_position',
+	        'summaraize_display_mode',
+	        'summaraize_button_style',
+	        'summaraize_button_color',
+	        'summaraize_list_type',
+	        'summaraize_prompt_type',
+	        'summaraize_custom_prompt',
+	        'summaraize_ai_model',
+	        'summaraize_ai_provider',
+	        'summaraize_google_gemini_api_key',
+	    );
+	    $option_key = sanitize_key( str_replace( '[]', '', $field_name ) );
+	    if ( ! in_array( $option_key, $allowed_options, true ) ) {
+	        wp_send_json_error( array( 'message' => __( 'Invalid option key.', 'summaraize' ) ) );
+	    }
+	    if ( isset( $_POST['field_value'] ) && is_array( $_POST['field_value'] ) ) {
+	        $field_value = array_map( 'sanitize_text_field', wp_unslash( $_POST['field_value'] ) );
+	    } else {
+	        $field_value = isset( $_POST['field_value'] ) ? sanitize_text_field( wp_unslash( $_POST['field_value'] ) ) : '';
+	    }	    
+	    $success = update_option( $option_key, $field_value );	    
+	    wp_cache_flush();
+	    $current_value = get_option( $option_key, [] );	    
+	    if ( $success || $current_value === $field_value ) {	        
+	        if ( 'summaraize_ai_provider' === $option_key ) {
+	            wp_send_json_success(
+	                array(
+	                    'message' => __( 'Option saved. Refreshing page...', 'summaraize' ),
+	                    'refresh' => true,
+	                )
+	            );
+	        } else {
+	            wp_send_json_success( array( 'message' => __( 'Option saved.', 'summaraize' ) ) );
+	        }
+	    } else {	        
+	        wp_send_json_error( array( 'message' => __( 'Failed to save option.', 'summaraize' ) ) );
+	    }
 	}
 
 	/**

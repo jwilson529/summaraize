@@ -179,17 +179,31 @@
         }
 
         /**
-         * Add a spinner with a message below the input field.
-         * @param $field
-         * @param message
+         * Add a spinner with a message below the input field or the container for post types.
+         * @param {jQuery} $field - The jQuery object of the field.
+         * @param {string} message - The message to display with the spinner.
          */
         function addSpinnerWithMessage($field, message) {
-            $field.siblings('.summaraize-spinner-container').remove();
+            var target;
+            if ($field.attr('name') === 'summaraize_post_types[]') {
+                // For post types, target the container
+                target = $field.closest('.summaraize-post-types-container');
+                // Check if spinner already exists after the container
+                if (target.next('.summaraize-spinner-container').length > 0) {
+                    return; // Spinner already exists, do nothing
+                }
+            } else {
+                target = $field;
+                // Remove any existing spinner container for this field
+                target.siblings('.summaraize-spinner-container').remove();
+            }
+            // Create spinner container
             const spinnerContainer = $('<div class="summaraize-spinner-container"></div>');
             const spinner = $('<div class="summaraize-spinner"></div>');
             const spinnerMessage = $('<span class="summaraize-spinner-message"></span>').text(message);
             spinnerContainer.append(spinner).append(spinnerMessage);
-            $field.after(spinnerContainer);
+            // Append after the target
+            target.after(spinnerContainer);
             spinnerContainer.fadeIn('fast');
         }
 
@@ -198,9 +212,14 @@
          * @param $field
          */
         function removeSpinnerWithMessage($field) {
-            $field.siblings('.summaraize-spinner-container').fadeOut('slow', function() {
-                $(this).remove();
-            });
+            if ($field.attr('name') === 'summaraize_post_types[]') {
+                const $spinner = $field.closest('.summaraize-post-types-container').next('.summaraize-spinner-container');
+                if ($spinner.length) {
+                    $spinner.remove();
+                }
+            } else {
+                $field.siblings('.summaraize-spinner-container').remove();
+            }
         }
 
         /**

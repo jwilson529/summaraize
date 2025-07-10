@@ -114,6 +114,11 @@ SummarAIze only sends the content of your posts to the selected AI provider for 
 ## Changelog
 
 
+### 1.2.4
+
+*   Fixed autosave in the settings page for the post types section.
+*   Fixed spinner message placement in the settings page for the post types section.
+
 ### 1.2.3
 
 *   Improved compatibility with WordPress 6.7.

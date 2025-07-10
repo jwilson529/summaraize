@@ -4,7 +4,7 @@ Donate link: https://oneclickcontent.com/donate/
 Tags: ai, summary, openai, google gemini, seo
 Requires at least: 5.0
 Tested up to: 6.8
-Stable tag: 1.2.3
+Stable tag: 1.2.4
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -72,6 +72,11 @@ SummarAIze only sends post content to the AI provider for summary generation. No
 5. Plugin settings screen. (`screenshot-5.png`)
 
 == Changelog ==
+
+
+= 1.2.4 =
+* Fixed autosave in the settings page for the post types section.
+* Fixed spinner message placement in the settings page for the post types section.
 
 = 1.2.3 =
 * Improved compatibility with WordPress 6.7.

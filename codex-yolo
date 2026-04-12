@@ -1,0 +1,3351 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================================================
+# Codex YOLO - Enhanced WordPress Plugin Development Automation
+# Two-Agent System: Junior (executor) consults Senior (decision-maker)
+# ============================================================================
+
+# Configuration
+MAX_ITERATIONS=${MAX_ITERATIONS:-5}
+DRY_RUN=false
+INTERACTIVE_ONLY=false
+USE_SUBAGENTS="${USE_SUBAGENTS:-false}"
+SUBAGENT_ROUNDS="${SUBAGENT_ROUNDS:-2}"
+AUTO_DECIDE=${AUTO_DECIDE:-true}  # Senior agent auto-decides common questions
+RUN_DOCKER_TESTS="${RUN_DOCKER_TESTS:-true}"
+RUN_DOCKER_TESTS_EACH_PASS="${RUN_DOCKER_TESTS_EACH_PASS:-true}"
+RUN_FINAL_CHECK="${RUN_FINAL_CHECK:-false}"
+DOCKER_USED=false
+KEEP_CODEX_OPEN="${KEEP_CODEX_OPEN:-true}"
+CLEAN_BASELINE=false
+RAN_CODEX_LOOP=false
+USE_EXPECT="${USE_EXPECT:-true}"
+CODEX_USE_EXEC="${CODEX_USE_EXEC:-true}"
+CODEX_RESUME_LAST="${CODEX_RESUME_LAST:-true}"
+CODEX_SANDBOX_MODE="${CODEX_SANDBOX_MODE:-workspace-write}"
+CODEX_APPROVAL_POLICY="${CODEX_APPROVAL_POLICY:-never}"
+CODEX_DANGEROUS_BYPASS="${CODEX_DANGEROUS_BYPASS:-false}"
+CODEX_ENSURE_TRUSTED="${CODEX_ENSURE_TRUSTED:-true}"
+CODEX_AUTO_TRUST_PROJECT="${CODEX_AUTO_TRUST_PROJECT:-true}"
+AUTO_INSTALL_DEPS="${AUTO_INSTALL_DEPS:-true}"
+AUTO_INSTALL_BREW="${AUTO_INSTALL_BREW:-true}"
+CSTN_GENERATOR_REPO="${CSTN_GENERATOR_REPO:-git@github.com:jwilson529/cstn-plugin-generator.git}"
+CSTN_GENERATOR_REF="${CSTN_GENERATOR_REF:-main}"
+CSTN_GENERATOR_AUTO_INSTALL="${CSTN_GENERATOR_AUTO_INSTALL:-true}"
+LEARN_MODE="${LEARN_MODE:-true}"
+LEARN_NOTE="${LEARN_NOTE:-}"
+LEARN_DEBUG="${LEARN_DEBUG:-false}"
+RUN_BACKUP="${RUN_BACKUP:-false}"
+LEARN_RECAP_WRITTEN=false
+
+# Always operate relative to the directory this script lives in
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_SLUG="$(basename "$PLUGIN_DIR")"
+LOG_FILE="$PLUGIN_DIR/plugin-error.log"
+
+RUN_META_FILE="$PLUGIN_DIR/.codex_run_meta.json"
+ASANA_CSV_FILE="$PLUGIN_DIR/.codex_tasks.csv"
+TEST_OUTPUT_FILE="$PLUGIN_DIR/.codex_test_output.log"
+
+CODEX_YOLO_PLAYBOOK_PATH="${CODEX_YOLO_PLAYBOOK_PATH:-$PLUGIN_DIR/PLAYBOOK.md}"
+
+# ISO style timestamps and local date for Asana
+RUN_STARTED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+RUN_LOCAL_DATE="$(date +%Y-%m-%d)"
+
+MEMORY_FILE="$PLUGIN_DIR/MEMORY.md"
+PLAN_FILE="$PLUGIN_DIR/PLAN.md"
+PLAYBOOK_FILE="$CODEX_YOLO_PLAYBOOK_PATH"
+
+# ============================================================================
+# Run codex.
+# ============================================================================
+run_codex_unattended() {
+    local codex_dir="$1"
+    local codex_msg="$2"
+    local codex_common_args=(--cd "$codex_dir")
+    local use_exec="$CODEX_USE_EXEC"
+
+    if [ "$CODEX_DANGEROUS_BYPASS" = "true" ]; then
+        codex_common_args=(--dangerously-bypass-approvals-and-sandbox --cd "$codex_dir")
+    fi
+
+    # Prefer non-interactive execution to avoid TUI confirmation pauses.
+    if is_truthy "$use_exec" && codex exec --help >/dev/null 2>&1; then
+        if [ "$CODEX_DANGEROUS_BYPASS" = "true" ]; then
+            codex "${codex_common_args[@]}" exec "$codex_msg"
+        else
+            codex --sandbox "$CODEX_SANDBOX_MODE" -a "$CODEX_APPROVAL_POLICY" "${codex_common_args[@]}" exec "$codex_msg"
+        fi
+        return $?
+    fi
+
+    if [ "$USE_EXPECT" != "false" ] && command -v expect >/dev/null 2>&1; then
+        CODEX_DIR="$codex_dir" CODEX_MSG="$codex_msg" expect <<'EOF'
+            set timeout -1
+            log_user 1
+            set codex_dir $env(CODEX_DIR)
+            set codex_msg $env(CODEX_MSG)
+            set cmd [list codex --cd $codex_dir --yolo $codex_msg]
+            spawn {*}$cmd
+            expect {
+                -re {(?i)save.*continue} { send "y\r"; exp_continue }
+                -re {(?i)continue\?} { send "y\r"; exp_continue }
+                -re {(?i)proceed\?} { send "y\r"; exp_continue }
+                -re {(?i)approve\?} { send "y\r"; exp_continue }
+                -re {(?i)allow.*\?} { send "y\r"; exp_continue }
+                -re {(?i)confirm.*\?} { send "y\r"; exp_continue }
+                -re {(?i)\(y/n\)} { send "y\r"; exp_continue }
+                -re {(?i)press.*enter} { send "\r"; exp_continue }
+                eof
+            }
+            if { [catch wait result] } {
+                exit 0
+            }
+            if { [llength $result] < 4 } {
+                exit 0
+            }
+            exit [lindex $result 3]
+EOF
+        return $?
+    fi
+
+    if [ "$CODEX_DANGEROUS_BYPASS" = "true" ]; then
+        codex "${codex_common_args[@]}" --yolo "$codex_msg"
+    else
+        codex --sandbox "$CODEX_SANDBOX_MODE" -a "$CODEX_APPROVAL_POLICY" "${codex_common_args[@]}" --yolo "$codex_msg"
+    fi
+}
+
+run_codex_interactive() {
+    local codex_dir="$1"
+    codex --sandbox "$CODEX_SANDBOX_MODE" -a on-request --cd "$codex_dir"
+}
+
+is_truthy() {
+    local value="${1:-}"
+    value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+
+    case "$value" in
+        1|true|yes|y|on)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+run_subagent_pipeline() {
+    local rounds="$SUBAGENT_ROUNDS"
+    local scaffold_prompt wpcs_prompt phpunit_prompt
+
+    if ! [[ "$rounds" =~ ^[0-9]+$ ]] || [ "$rounds" -lt 1 ]; then
+        rounds=2
+    fi
+
+    scaffold_prompt=$'You are the Scaffold subagent.\n\
+Only create or repair baseline plugin wiring and tooling.\n\
+Do not implement new product features.\n\
+Focus on: WPPB folders, plugin bootstrap/activation/deactivation, loader wiring, tests bootstrap, phpcs/phpunit/tooling config.\n\
+Read AGENTS.md and SPEC.md and apply changes directly.'
+
+    wpcs_prompt=$'You are the WPCS subagent.\n\
+Only fix coding standards issues and related safe refactors.\n\
+Do not add features.\n\
+Use npm run fix, npm run check, and check.txt as the backlog until clean.'
+
+    phpunit_prompt=$'You are the PHPUnit subagent.\n\
+Only fix test failures and test harness issues.\n\
+Do not add product features unless required to restore tests.\n\
+Prefer minimal changes that get npm run test passing.'
+
+    log "🧩 Subagent pipeline enabled (rounds=${rounds})"
+    RAN_CODEX_LOOP=true
+    CODEX_EXIT=0
+
+    log "🧩 Scaffold subagent pass"
+    set +e
+    run_codex_unattended "$PLUGIN_DIR" "$scaffold_prompt"$'\n\n---\n'"$(build_codex_context || true)"
+    CODEX_EXIT=$?
+    set -e
+    if [ "$CODEX_EXIT" -ne 0 ]; then
+        log "⚠️ Scaffold subagent exit code: $CODEX_EXIT"
+    fi
+
+    if [ -f "$PLUGIN_DIR/package.json" ]; then
+        local round
+        for (( round=1; round<=rounds; round++ )); do
+            log "🧩 WPCS subagent round $round/$rounds"
+            set +e
+            run_codex_unattended "$PLUGIN_DIR" "$wpcs_prompt"$'\n\n---\n'"$(build_codex_context || true)"
+            CODEX_EXIT=$?
+            set -e
+            [ "$CODEX_EXIT" -ne 0 ] && log "⚠️ WPCS subagent exit code: $CODEX_EXIT"
+
+            npm run fix || true
+            CHECK_EXIT=0
+            npm run check || CHECK_EXIT=$?
+
+            if [ "$CHECK_EXIT" -eq 0 ] && check_is_clean; then
+                log "✅ WPCS gate clean."
+                break
+            fi
+        done
+
+        for (( round=1; round<=rounds; round++ )); do
+            log "🧩 PHPUnit subagent round $round/$rounds"
+            set +e
+            run_codex_unattended "$PLUGIN_DIR" "$phpunit_prompt"$'\n\n---\n'"$(build_codex_context || true)"
+            CODEX_EXIT=$?
+            npm run test 2>&1 | tee "$TEST_OUTPUT_FILE"
+            TEST_EXIT=$?
+            set -e
+            [ "$CODEX_EXIT" -ne 0 ] && log "⚠️ PHPUnit subagent exit code: $CODEX_EXIT"
+
+            if [ "${TEST_EXIT:-1}" -eq 0 ]; then
+                log "✅ PHPUnit gate passing."
+                break
+            fi
+        done
+    else
+        log "ℹ️ package.json missing; skipping WPCS/PHPUnit subagents."
+    fi
+
+    if [ "${CHECK_EXIT:-0}" -eq 0 ] && check_is_clean; then
+        CLEAN_BASELINE=true
+    fi
+}
+
+build_codex_context() {
+    local context=""
+
+    if [ -f "$PLUGIN_DIR/check.txt" ]; then
+        local errors warnings
+        errors=$(count_check_matches "ERROR")
+        warnings=$(count_check_matches "WARNING")
+
+        context+=$'\n\nPHPCS summary:\n'
+        context+="Errors: ${errors}, Warnings: ${warnings}"$'\n'
+
+        if [ "$errors" -gt 0 ] || [ "$warnings" -gt 0 ]; then
+            context+=$'\nTop PHPCS lines:\n'
+            context+="$(head -50 "$PLUGIN_DIR/check.txt")"
+            context+=$'\n'
+        fi
+    fi
+
+    if [ -d "$PLUGIN_DIR/.git" ]; then
+        context+=$'\n\nGit diff stat:\n'
+        context+="$(git diff --stat HEAD 2>/dev/null || true)"
+        context+=$'\n'
+    fi
+
+    if [ -n "$CODEX_YOLO_PLAYBOOK_PATH" ] && [ -f "$CODEX_YOLO_PLAYBOOK_PATH" ]; then
+        context+=$'\n\nPlaybook (last 30 lines):\n'
+        context+="$(tail -n 30 "$CODEX_YOLO_PLAYBOOK_PATH" 2>/dev/null || true)"
+        context+=$'\n'
+    fi
+
+    echo "$context"
+}
+
+# Write a file only if missing. If present, always keep it.
+ensure_managed_file() {
+    local path="$1"
+    local label="$2"
+    local marker="$3"
+    local content="$4"
+
+    if [ -f "$path" ]; then
+        # Preserve all existing files, whether user-authored or managed.
+        # shellcheck disable=SC2034
+        local _unused_marker="$marker"
+        echo "🧠 $label exists. Leaving as-is."
+        return 0
+    fi
+
+    echo "🧠 Creating $label"
+    if [ "$DRY_RUN" = false ]; then
+        # Atomic write.
+        local tmp
+        tmp="$(mktemp)"
+        printf '%s\n' "$content" > "$tmp"
+        mv "$tmp" "$path"
+    fi
+}
+
+# Write a file if missing, or replace it when it is an older Codex-managed version.
+ensure_upgradable_managed_file() {
+    local path="$1"
+    local label="$2"
+    local current_marker="$3"
+    local content="$4"
+    shift 4
+    local legacy_markers=("$@")
+
+    if [ -f "$path" ]; then
+        if grep -q "$current_marker" "$path" 2>/dev/null; then
+            echo "🧠 $label already up to date. Leaving as-is."
+            return 0
+        fi
+
+        local marker
+        for marker in "${legacy_markers[@]}"; do
+            if [ -n "$marker" ] && grep -q "$marker" "$path" 2>/dev/null; then
+                echo "🧠 Updating managed $label"
+                if [ "$DRY_RUN" = false ]; then
+                    local tmp
+                    tmp="$(mktemp)"
+                    printf '%s\n' "$content" > "$tmp"
+                    mv "$tmp" "$path"
+                fi
+                return 0
+            fi
+        done
+
+        echo "🧠 $label exists. Leaving as-is."
+        return 0
+    fi
+
+    echo "🧠 Creating $label"
+    if [ "$DRY_RUN" = false ]; then
+        local tmp
+        tmp="$(mktemp)"
+        printf '%s\n' "$content" > "$tmp"
+        mv "$tmp" "$path"
+    fi
+}
+
+# Write once: create if missing, never overwrite.
+ensure_once_file() {
+    local path="$1"
+    local label="$2"
+    local content="$3"
+
+    if [ -f "$path" ]; then
+        echo "🧠 $label exists. Leaving as-is."
+        return 0
+    fi
+
+    echo "🧠 Creating $label"
+    if [ "$DRY_RUN" = false ]; then
+        local tmp
+        tmp="$(mktemp)"
+        printf '%s\n' "$content" > "$tmp"
+        mv "$tmp" "$path"
+    fi
+}
+
+ensure_lines_in_file() {
+    local path="$1"
+    shift
+
+    if [ ! -f "$path" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            return 0
+        fi
+        touch "$path"
+    fi
+
+    local line
+    for line in "$@"; do
+        [ -n "$line" ] || continue
+        if ! grep -Fqx "$line" "$path" 2>/dev/null; then
+            if [ "$DRY_RUN" = true ]; then
+                continue
+            fi
+            printf '%s\n' "$line" >> "$path"
+        fi
+    done
+}
+
+count_check_matches() {
+    local pattern="$1"
+    local count
+    count=$(grep -c "$pattern" "$PLUGIN_DIR/check.txt" 2>/dev/null || true)
+    count="$(printf '%s' "$count" | tail -n 1)"
+    [ -n "$count" ] || count="0"
+    echo "$count"
+}
+
+# Docker test harness (managed outputs).
+ensure_docker_harness() {
+    local compose_file="$PLUGIN_DIR/docker-compose.yml"
+    local tests_script="$PLUGIN_DIR/bin/docker-tests.sh"
+    local compose_marker="GENERATED_BY_CODEX_YOLO_DOCKER_COMPOSE_V3"
+    local tests_marker="GENERATED_BY_CODEX_YOLO_DOCKER_TESTS_V3"
+
+    mkdir -p "$PLUGIN_DIR/bin"
+
+    ensure_upgradable_managed_file "$compose_file" "docker-compose.yml" "$compose_marker" "$(cat <<'EOF'
+# GENERATED_BY_CODEX_YOLO_DOCKER_COMPOSE_V3
+services:
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: wp
+      MYSQL_ROOT_PASSWORD: root
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  wordpress:
+    image: wordpress:php8.2-apache
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: wordpress
+    ports:
+      - "8088:80"
+    volumes:
+      - ./:/var/www/html/wp-content/plugins/current-plugin:rw
+
+  tests:
+    image: php:8.2-cli
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /work
+    volumes:
+      - ./:/work:rw
+    environment:
+      WP_TESTS_DB_HOST: db
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASS: root
+      WP_VERSION: latest
+      PHPUNIT_VERSION: 9.6.20
+    command: ["bash", "-lc", "bash ./bin/docker-tests.sh"]
+EOF
+)" "GENERATED_BY_CODEX_YOLO_DOCKER_COMPOSE_V1" "GENERATED_BY_CODEX_YOLO_DOCKER_COMPOSE_V2"
+
+    ensure_upgradable_managed_file "$tests_script" "bin/docker-tests.sh" "$tests_marker" "$(cat <<'EOF'
+#!/usr/bin/env bash
+# GENERATED_BY_CODEX_YOLO_DOCKER_TESTS_V3
+set -euo pipefail
+
+WORKDIR="/work"
+WP_TESTS_DIR="${WORKDIR}/.wp-tests"
+WP_CORE_DIR="${WORKDIR}/.wp-core"
+
+DB_HOST="${WP_TESTS_DB_HOST:-db}"
+DB_NAME="${WP_TESTS_DB_NAME:-wordpress_test}"
+DB_USER="${WP_TESTS_DB_USER:-root}"
+DB_PASS="${WP_TESTS_DB_PASS:-root}"
+WP_VERSION="${WP_VERSION:-latest}"
+PHPUNIT_VERSION="${PHPUNIT_VERSION:-9.6.20}"
+
+echo "==> Installing system deps"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends git unzip mariadb-client curl rsync ca-certificates
+
+echo "==> Installing PHPUnit ${PHPUNIT_VERSION}"
+curl -Ls -o /usr/local/bin/phpunit "https://phar.phpunit.de/phpunit-${PHPUNIT_VERSION}.phar"
+chmod +x /usr/local/bin/phpunit
+phpunit --version
+
+echo "==> Installing WP core for tests"
+mkdir -p "${WP_TESTS_DIR}" "${WP_CORE_DIR}"
+
+if [ ! -f "${WP_CORE_DIR}/wp-load.php" ]; then
+	curl -Ls -o /tmp/wp.tar.gz "https://wordpress.org/latest.tar.gz"
+	tar -xzf /tmp/wp.tar.gz -C /tmp
+	rsync -a /tmp/wordpress/ "${WP_CORE_DIR}/"
+fi
+
+echo "==> Installing WP test suite"
+if [ ! -d "${WP_TESTS_DIR}/includes" ]; then
+	git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wp-develop
+	rsync -a /tmp/wp-develop/tests/phpunit/ "${WP_TESTS_DIR}/"
+fi
+
+echo "==> Creating wp-tests-config.php"
+cat > "${WP_TESTS_DIR}/wp-tests-config.php" <<CFG
+<?php
+define( 'DB_NAME', '${DB_NAME}' );
+define( 'DB_USER', '${DB_USER}' );
+define( 'DB_PASSWORD', '${DB_PASS}' );
+define( 'DB_HOST', '${DB_HOST}' );
+define( 'DB_CHARSET', 'utf8' );
+define( 'DB_COLLATE', '' );
+
+define( 'ABSPATH', '${WP_CORE_DIR}/' );
+define( 'WP_DEBUG', true );
+
+\$table_prefix = 'wptests_';
+
+require_once '${WP_TESTS_DIR}/includes/functions.php';
+CFG
+
+echo "==> Creating test database if needed"
+MYSQL_SSL_FLAG=""
+if mysql --help 2>/dev/null | grep -q "ssl-mode"; then
+    MYSQL_SSL_FLAG="--ssl-mode=DISABLED"
+elif mysql --help 2>/dev/null | grep -q "skip-ssl"; then
+    MYSQL_SSL_FLAG="--skip-ssl"
+elif mysql --help 2>/dev/null | grep -q "ssl"; then
+    MYSQL_SSL_FLAG="--ssl=0"
+fi
+mysql ${MYSQL_SSL_FLAG} -h "${DB_HOST}" -u "${DB_USER}" -p"${DB_PASS}" -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;" >/dev/null
+
+echo "==> Running PHPUnit"
+cd "${WORKDIR}"
+phpunit
+EOF
+)" "GENERATED_BY_CODEX_YOLO_DOCKER_TESTS_V1" "GENERATED_BY_CODEX_YOLO_DOCKER_TESTS_V2"
+
+    chmod +x "$tests_script" 2>/dev/null || true
+}
+
+# ============================================================================
+# Utility Functions
+# ============================================================================
+
+# Terminal colors (only when stdout is a TTY).
+if [ -t 1 ]; then
+    COLOR_RESET=$'\033[0m'
+    COLOR_CYAN=$'\033[36m'
+    COLOR_GREEN=$'\033[32m'
+    COLOR_YELLOW=$'\033[33m'
+    COLOR_MAGENTA=$'\033[35m'
+    COLOR_BOLD=$'\033[1m'
+else
+    COLOR_RESET=""
+    COLOR_CYAN=""
+    COLOR_GREEN=""
+    COLOR_YELLOW=""
+    COLOR_MAGENTA=""
+    COLOR_BOLD=""
+fi
+
+# Play notification sound (works on macOS, Linux with beep, or terminal bell)
+notify_sound() {
+    if command -v afplay >/dev/null 2>&1; then
+        # macOS - play system sound
+        afplay /System/Library/Sounds/Glass.aiff 2>/dev/null &
+    elif command -v paplay >/dev/null 2>&1; then
+        # Linux with PulseAudio
+        paplay /usr/share/sounds/freedesktop/stereo/bell.oga 2>/dev/null &
+    elif command -v beep >/dev/null 2>&1; then
+        # Linux with beep package
+        beep -f 800 -l 200 2>/dev/null &
+    else
+        # Fallback: terminal bell (works almost everywhere)
+        printf '\a'
+    fi
+}
+
+# Notify user with sound and visual indicator
+notify_user() {
+    local message="$1"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔔 ${message}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    notify_sound
+}
+
+# ============================================================================
+# Two-Agent System: Senior Developer Decision Making
+# ============================================================================
+
+# Senior Developer: Makes autonomous decisions on common questions
+senior_decide() {
+    local question_type="$1"
+    local context="${2:-}"
+    
+    log "🧠 Senior Developer consulting on: $question_type"
+    
+    case "$question_type" in
+        "plugin_name")
+            # Generate plugin name from directory
+            local plugin_name=$(echo "$PLUGIN_SLUG" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+            echo "$plugin_name"
+            log "✓ Senior decided plugin name: $plugin_name"
+            ;;
+            
+        "plugin_description")
+            echo "A modern WordPress plugin built with WPPB architecture and WPCS compliance."
+            log "✓ Senior decided on standard description"
+            ;;
+            
+        "author_name")
+            # Try to get from git config
+            local author=$(git config user.name 2>/dev/null || echo "WordPress Developer")
+            echo "$author"
+            log "✓ Senior decided author: $author"
+            ;;
+            
+        "author_email")
+            # Try to get from git config
+            local email=$(git config user.email 2>/dev/null || echo "dev@example.com")
+            echo "$email"
+            log "✓ Senior decided email: $email"
+            ;;
+            
+        "author_url")
+            # Try to get from git remote or use placeholder
+            local url=$(git config user.url 2>/dev/null || echo "https://example.com")
+            echo "$url"
+            log "✓ Senior decided URL: $url"
+            ;;
+            
+        "text_domain")
+            echo "$PLUGIN_SLUG"
+            log "✓ Senior decided text domain: $PLUGIN_SLUG"
+            ;;
+            
+        "namespace")
+            # Convert plugin-slug to Plugin_Namespace
+            local namespace=$(echo "$PLUGIN_SLUG" | sed 's/-/_/g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1' | sed 's/ /_/g')
+            echo "$namespace"
+            log "✓ Senior decided namespace: $namespace"
+            ;;
+            
+        "create_scaffold")
+            # Senior always says yes to creating missing structure
+            echo "yes"
+            log "✓ Senior approved scaffold creation"
+            ;;
+            
+        "install_dependencies")
+            # Senior approves installing standard dev dependencies
+            echo "yes"
+            log "✓ Senior approved dependency installation"
+            ;;
+            
+        "fix_violations")
+            # Senior always approves fixing WPCS violations
+            echo "yes"
+            log "✓ Senior approved fixing violations"
+            ;;
+            
+        *)
+            # Unknown question - need actual user input
+            log "⚠️ Senior cannot decide on: $question_type - needs user input"
+            return 1
+            ;;
+    esac
+    
+    return 0
+}
+
+# Ask Senior Developer or fall back to user
+ask_decision() {
+    local question_type="$1"
+    local prompt_message="$2"
+    local default_value="${3:-}"
+
+    # Interactive mode: always ask the user first.
+    if [ -t 0 ]; then
+        local response
+        notify_user "$prompt_message"
+        if [ -n "$default_value" ]; then
+            read -r -p "$prompt_message [$default_value]: " response
+        else
+            read -r -p "$prompt_message: " response
+        fi
+
+        if [ -n "${response:-}" ]; then
+            echo "$response"
+            return 0
+        fi
+
+        if [ "$AUTO_DECIDE" = true ] && senior_decide "$question_type" 2>/dev/null; then
+            return 0
+        fi
+
+        echo "$default_value"
+        return 0
+    fi
+
+    # Non-interactive mode: use Senior/defaults without blocking.
+    if [ "$AUTO_DECIDE" = true ] && senior_decide "$question_type" 2>/dev/null; then
+        return 0
+    fi
+
+    log "⚠️ Non-interactive mode: defaulting $question_type to '${default_value:-}'"
+    echo "$default_value"
+}
+
+# Generate WPPB scaffold autonomously without interactive prompts
+generate_wppb_scaffold_autonomous() {
+    log "🏗️ Senior Developer: Generating WPPB scaffold autonomously..."
+    
+    local plugin_name=$(senior_decide "plugin_name")
+    local plugin_slug="$PLUGIN_SLUG"
+    local description=$(senior_decide "plugin_description")
+    local author=$(senior_decide "author_name")
+    local email=$(senior_decide "author_email")
+    local url=$(senior_decide "author_url")
+    local namespace=$(senior_decide "namespace")
+    
+    echo ""
+    echo "📋 Senior Developer decisions for scaffold:"
+    echo "   Plugin Name: $plugin_name"
+    echo "   Plugin Slug: $plugin_slug"
+    echo "   Description: $description"
+    echo "   Author: $author <$email>"
+    echo "   Author URL: $url"
+    echo "   Namespace: $namespace"
+    echo ""
+    
+    # Create basic WPPB structure manually
+    mkdir -p "$PLUGIN_DIR/includes"
+    mkdir -p "$PLUGIN_DIR/admin"
+    mkdir -p "$PLUGIN_DIR/admin/css"
+    mkdir -p "$PLUGIN_DIR/admin/js"
+    mkdir -p "$PLUGIN_DIR/public"
+    mkdir -p "$PLUGIN_DIR/public/css"
+    mkdir -p "$PLUGIN_DIR/public/js"
+    mkdir -p "$PLUGIN_DIR/tests"
+    
+    # Create main plugin file
+    cat > "$PLUGIN_DIR/$plugin_slug.php" <<EOF
+<?php
+/**
+ * Plugin Name:       $plugin_name
+ * Plugin URI:        $url
+ * Description:       $description
+ * Version:           0.1.0
+ * Author:            $author
+ * Author URI:        $url
+ * License:           GPL-2.0+
+ * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
+ * Text Domain:       $plugin_slug
+ * Domain Path:       /languages
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+// Plugin version.
+define( '${namespace}_VERSION', '0.1.0' );
+
+// Plugin directory path.
+define( '${namespace}_PATH', plugin_dir_path( __FILE__ ) );
+
+// Plugin directory URL.
+define( '${namespace}_URL', plugin_dir_url( __FILE__ ) );
+
+/**
+ * Plugin activation hook.
+ */
+function ${plugin_slug//-/_}_activate() {
+    require_once ${namespace}_PATH . 'includes/class-activator.php';
+    ${namespace}_Activator::activate();
+}
+register_activation_hook( __FILE__, '${plugin_slug//-/_}_activate' );
+
+/**
+ * Plugin deactivation hook.
+ */
+function ${plugin_slug//-/_}_deactivate() {
+    require_once ${namespace}_PATH . 'includes/class-deactivator.php';
+    ${namespace}_Deactivator::deactivate();
+}
+register_deactivation_hook( __FILE__, '${plugin_slug//-/_}_deactivate' );
+
+/**
+ * Load plugin core class.
+ */
+require ${namespace}_PATH . 'includes/class-${plugin_slug}.php';
+
+/**
+ * Initialize plugin.
+ */
+function ${plugin_slug//-/_}_run() {
+    \$plugin = new ${namespace}();
+    \$plugin->run();
+}
+${plugin_slug//-/_}_run();
+EOF
+
+    # Create basic loader class
+    cat > "$PLUGIN_DIR/includes/class-loader.php" <<EOF
+<?php
+/**
+ * Loader class.
+ *
+ * @package    $namespace
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Register all actions and filters for the plugin.
+ */
+class ${namespace}_Loader {
+
+    /**
+     * Array of actions registered with WordPress.
+     *
+     * @var array
+     */
+    protected \$actions = array();
+
+    /**
+     * Array of filters registered with WordPress.
+     *
+     * @var array
+     */
+    protected \$filters = array();
+
+    /**
+     * Add a new action to be registered.
+     *
+     * @param string \$hook          Hook name.
+     * @param object \$component     Component instance.
+     * @param string \$callback      Callback method.
+     * @param int    \$priority      Hook priority.
+     * @param int    \$accepted_args Number of accepted arguments.
+     */
+    public function add_action( \$hook, \$component, \$callback, \$priority = 10, \$accepted_args = 1 ) {
+        \$this->actions = \$this->add( \$this->actions, \$hook, \$component, \$callback, \$priority, \$accepted_args );
+    }
+
+    /**
+     * Add a new filter to be registered.
+     *
+     * @param string \$hook          Hook name.
+     * @param object \$component     Component instance.
+     * @param string \$callback      Callback method.
+     * @param int    \$priority      Hook priority.
+     * @param int    \$accepted_args Number of accepted arguments.
+     */
+    public function add_filter( \$hook, \$component, \$callback, \$priority = 10, \$accepted_args = 1 ) {
+        \$this->filters = \$this->add( \$this->filters, \$hook, \$component, \$callback, \$priority, \$accepted_args );
+    }
+
+    /**
+     * Add hook to collection.
+     *
+     * @param array  \$hooks         Hook collection.
+     * @param string \$hook          Hook name.
+     * @param object \$component     Component instance.
+     * @param string \$callback      Callback method.
+     * @param int    \$priority      Hook priority.
+     * @param int    \$accepted_args Number of accepted arguments.
+     * @return array
+     */
+    private function add( \$hooks, \$hook, \$component, \$callback, \$priority, \$accepted_args ) {
+        \$hooks[] = array(
+            'hook'          => \$hook,
+            'component'     => \$component,
+            'callback'      => \$callback,
+            'priority'      => \$priority,
+            'accepted_args' => \$accepted_args,
+        );
+        return \$hooks;
+    }
+
+    /**
+     * Register all hooks with WordPress.
+     */
+    public function run() {
+        foreach ( \$this->filters as \$hook ) {
+            add_filter(
+                \$hook['hook'],
+                array( \$hook['component'], \$hook['callback'] ),
+                \$hook['priority'],
+                \$hook['accepted_args']
+            );
+        }
+
+        foreach ( \$this->actions as \$hook ) {
+            add_action(
+                \$hook['hook'],
+                array( \$hook['component'], \$hook['callback'] ),
+                \$hook['priority'],
+                \$hook['accepted_args']
+            );
+        }
+    }
+}
+EOF
+
+    log "✅ Senior Developer: WPPB scaffold generated autonomously"
+}
+
+# Structured logging with timestamps
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE" >&2
+}
+
+append_run_recap() {
+    local exit_code="$1"
+    local docker_status="${2:-unknown}"
+    local check_status="${3:-unknown}"
+    local note="${4:-}"
+    local phpcs_errors phpcs_warnings
+    local phpcs_top_violations failed_test_names
+    local git_branch="n/a"
+    local git_commit="n/a"
+    local changed_count="0"
+    local changed_preview="none"
+
+    phpcs_errors=$(count_check_matches "ERROR")
+    phpcs_warnings=$(count_check_matches "WARNING")
+    phpcs_top_violations="$(extract_top_phpcs_violations)"
+    failed_test_names="$(extract_failed_test_names)"
+
+    if [ -d "$PLUGIN_DIR/.git" ]; then
+        git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+        git_commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        changed_count=$(git diff --name-only HEAD 2>/dev/null | sed '/^$/d' | wc -l | tr -d ' ')
+        changed_preview=$(git diff --name-only HEAD 2>/dev/null | head -10 | tr '\n' ',' | sed 's/,$//')
+        [ -n "$changed_preview" ] || changed_preview="none"
+        if [ "$changed_count" -gt 10 ] 2>/dev/null; then
+            changed_preview="${changed_preview},..."
+        fi
+    fi
+
+    if [ ! -f "$MEMORY_FILE" ]; then
+        if [ "$LEARN_DEBUG" = "true" ]; then
+            echo "⚠️  MEMORY.md missing, creating minimal file for run recap." >&2
+        fi
+        printf '%s\n' "# Project Memory" "" "## Run recap log" > "$MEMORY_FILE"
+    fi
+
+    {
+        echo ""
+        echo "## Run recap ($(date +'%Y-%m-%d %H:%M:%S'))"
+        echo "- Exit code: ${exit_code}"
+        echo "- Docker: ${docker_status}"
+        echo "- PHPCS: ${check_status}"
+        echo "- PHPCS totals: ${phpcs_errors} errors, ${phpcs_warnings} warnings"
+        echo "- Top PHPCS violations: ${phpcs_top_violations}"
+        echo "- Failed tests: ${failed_test_names}"
+        echo "- Git: ${git_branch} @ ${git_commit}"
+        echo "- Changed files (${changed_count}): ${changed_preview}"
+        [ -n "$note" ] && echo "- Note: ${note}"
+    } >> "$MEMORY_FILE"
+
+    if [ -n "$CODEX_YOLO_PLAYBOOK_PATH" ]; then
+        mkdir -p "$(dirname "$CODEX_YOLO_PLAYBOOK_PATH")" 2>/dev/null || true
+        {
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] ${PLUGIN_SLUG} | exit=${exit_code} | docker=${docker_status} | phpcs=${check_status} (${phpcs_errors}e/${phpcs_warnings}w) | top_phpcs=${phpcs_top_violations} | failed_tests=${failed_test_names} | git=${git_branch}@${git_commit} | files=${changed_count} | ${note}"
+        } >> "$CODEX_YOLO_PLAYBOOK_PATH"
+    fi
+
+    if [ "$LEARN_DEBUG" = "true" ]; then
+        echo "✅ Learning recap appended." >&2
+    fi
+}
+
+extract_top_phpcs_violations() {
+    local violations
+
+    if [ ! -f "$PLUGIN_DIR/check.txt" ]; then
+        echo "none"
+        return 0
+    fi
+
+    violations="$(
+        {
+            grep -E '\b(ERROR|WARNING)\b' "$PLUGIN_DIR/check.txt" 2>/dev/null | \
+                grep -Ev 'FOUND [0-9]+ ERRORS?|A TOTAL OF|PHPCBF CAN FIX|^Time:|^Memory:' | \
+                sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//' | \
+                head -5 | \
+                awk 'BEGIN{out=""} NF{if(out!=""){out=out" ; "} out=out$0} END{print out}'
+        } || true
+    )"
+
+    if [ -n "$violations" ]; then
+        echo "$violations"
+    else
+        echo "none"
+    fi
+}
+
+extract_failed_test_names() {
+    local failures
+
+    if [ ! -f "$TEST_OUTPUT_FILE" ]; then
+        echo "none"
+        return 0
+    fi
+
+    failures="$(
+        {
+            grep -E '^FAIL[[:space:]]+|^[[:space:]]*[0-9]+\)[[:space:]]+.+::.+|^[[:space:]]*✕[[:space:]]+|^not ok[[:space:]]+[0-9]+' "$TEST_OUTPUT_FILE" 2>/dev/null | \
+                sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//' | \
+                head -8 | \
+                awk 'BEGIN{out=""} NF{if(out!=""){out=out" ; "} out=out$0} END{print out}'
+        } || true
+    )"
+
+    if [ -n "$failures" ]; then
+        echo "$failures"
+    else
+        echo "none"
+    fi
+}
+
+append_learning_recap_if_needed() {
+    local exit_code="${1:-0}"
+    local docker_status="skipped"
+    local check_status="skipped"
+
+    if [ "$DRY_RUN" = true ] || [ "$LEARN_MODE" != "true" ] || [ "$LEARN_RECAP_WRITTEN" = "true" ]; then
+        return 0
+    fi
+
+    if [ "$RUN_DOCKER_TESTS" = "true" ] && [ "$DOCKER_USED" = true ]; then
+        if [ "${DOCKER_TEST_EXIT:-1}" -eq 0 ]; then
+            docker_status="pass"
+        else
+            docker_status="fail(${DOCKER_TEST_EXIT})"
+        fi
+    fi
+
+    if [ -f "$PLUGIN_DIR/check.txt" ]; then
+        if check_is_clean; then
+            check_status="clean"
+        else
+            check_status="dirty"
+        fi
+    elif [ "${CHECK_EXIT:-0}" -ne 0 ]; then
+        check_status="fail(${CHECK_EXIT})"
+    fi
+
+    append_run_recap "$exit_code" "$docker_status" "$check_status" "$LEARN_NOTE"
+    LEARN_RECAP_WRITTEN=true
+}
+
+# Docker helpers
+has_docker() {
+    command -v docker >/dev/null 2>&1 || return 1
+    docker info >/dev/null 2>&1 || return 1
+    docker_compose_cmd >/dev/null 2>&1 || return 1
+    return 0
+}
+
+docker_compose_cmd() {
+    if docker compose version >/dev/null 2>&1; then
+        echo "docker compose"
+        return 0
+    fi
+    if command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+        return 0
+    fi
+    return 1
+}
+
+docker_up() {
+    local dc
+    dc="$(docker_compose_cmd)"
+    log "🐳 Docker: bringing up db"
+    $dc up -d db >/dev/null
+}
+
+docker_tests() {
+    local dc
+    dc="$(docker_compose_cmd)"
+    log "🧪 Docker: running PHPUnit in container"
+    $dc run --rm tests 2>&1 | tee "$TEST_OUTPUT_FILE"
+}
+
+docker_down() {
+    local dc
+    dc="$(docker_compose_cmd)"
+    log "🧹 Docker: tearing down stack"
+    $dc down -v >/dev/null 2>&1 || true
+}
+
+# Find a free TCP port from a preferred list.
+find_free_port() {
+    local ports=("$@")
+    local port
+    for port in "${ports[@]}"; do
+        if command -v lsof >/dev/null 2>&1; then
+            if ! lsof -n -P -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+                echo "$port"
+                return 0
+            fi
+        elif command -v nc >/dev/null 2>&1; then
+            if ! nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
+                echo "$port"
+                return 0
+            fi
+        else
+            echo "$port"
+            return 0
+        fi
+    done
+    return 1
+}
+
+ensure_cstn_generator_repo() {
+    if [ "$CSTN_GENERATOR_AUTO_INSTALL" != "true" ]; then
+        return 1
+    fi
+
+    if ! command -v git >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local install_dir="$PLUGIN_DIR/.cstn-generator"
+
+    if [ ! -d "$install_dir/.git" ]; then
+        rm -rf "$install_dir"
+        git clone --depth=1 --branch "$CSTN_GENERATOR_REF" "$CSTN_GENERATOR_REPO" "$install_dir" >/dev/null 2>&1 || return 1
+    else
+        (cd "$install_dir" && git fetch --depth=1 origin "$CSTN_GENERATOR_REF" >/dev/null 2>&1) || true
+        (cd "$install_dir" && git reset --hard FETCH_HEAD >/dev/null 2>&1) || true
+    fi
+
+    [ -f "$install_dir/bin/rename-plugin.js" ]
+}
+
+# Check for required dependencies
+add_npm_global_bin_to_path() {
+    if ! command -v npm >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local npm_bin
+    npm_bin="$(npm bin -g 2>/dev/null || true)"
+    if [ -n "$npm_bin" ] && [ -d "$npm_bin" ] && [[ ":$PATH:" != *":$npm_bin:"* ]]; then
+        export PATH="$npm_bin:$PATH"
+    fi
+}
+
+ensure_homebrew() {
+    local os_name
+    os_name="$(uname -s 2>/dev/null || echo unknown)"
+
+    if [ "$os_name" != "Darwin" ] || command -v brew >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [ "$AUTO_INSTALL_DEPS" != "true" ] || [ "$AUTO_INSTALL_BREW" != "true" ]; then
+        return 1
+    fi
+
+    echo "🛠️  Homebrew not found. Attempting installation (AUTO_INSTALL_BREW=true)..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return 1
+
+    # Common brew locations (Apple Silicon + Intel)
+    [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+    [ -x /usr/local/bin/brew ] && eval "$(/usr/local/bin/brew shellenv)"
+
+    command -v brew >/dev/null 2>&1
+}
+
+check_dependencies() {
+    local missing=()
+    add_npm_global_bin_to_path
+    command -v node >/dev/null 2>&1 || missing+=("node")
+    command -v npm >/dev/null 2>&1 || missing+=("npm")
+    command -v git >/dev/null 2>&1 || missing+=("git")
+    command -v php >/dev/null 2>&1 || missing+=("php")
+    command -v codex >/dev/null 2>&1 || missing+=("codex")
+    command -v rsync >/dev/null 2>&1 || missing+=("rsync")
+    command -v zip >/dev/null 2>&1 || missing+=("zip")
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "❌ Missing required dependencies: ${missing[*]}"
+        if [ "$AUTO_INSTALL_DEPS" = "true" ]; then
+            ensure_homebrew || true
+            echo "🛠️  Attempting to install missing dependencies..."
+            install_dependencies "${missing[@]}"
+            add_npm_global_bin_to_path
+            hash -r
+
+            missing=()
+            command -v node >/dev/null 2>&1 || missing+=("node")
+            command -v npm >/dev/null 2>&1 || missing+=("npm")
+            command -v git >/dev/null 2>&1 || missing+=("git")
+            command -v php >/dev/null 2>&1 || missing+=("php")
+            command -v codex >/dev/null 2>&1 || missing+=("codex")
+            command -v rsync >/dev/null 2>&1 || missing+=("rsync")
+            command -v zip >/dev/null 2>&1 || missing+=("zip")
+
+            if [ ${#missing[@]} -gt 0 ]; then
+                echo "❌ Still missing: ${missing[*]}"
+                if [ "$(uname -s 2>/dev/null || echo unknown)" = "Darwin" ] && ! command -v brew >/dev/null 2>&1; then
+                    echo "   Homebrew is required for auto-install on macOS."
+                    echo "   Install: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+                fi
+                echo "   Please install them manually and re-run."
+                exit 1
+            fi
+        else
+            echo "   Please install them before running this script."
+            exit 1
+        fi
+    fi
+
+    # Optional quality-of-life dependencies.
+    if [ "$USE_EXPECT" != "false" ] && ! command -v expect >/dev/null 2>&1; then
+        echo "ℹ️  Optional dependency missing: expect (auto-confirm fallback disabled)."
+    fi
+
+    # Optional runtime gate for Docker-driven tests.
+    if [ "$RUN_DOCKER_TESTS" = "true" ] && ! has_docker; then
+        echo "ℹ️  Docker/Compose not available. Disabling Docker test runs for this execution."
+        RUN_DOCKER_TESTS="false"
+        RUN_DOCKER_TESTS_EACH_PASS="false"
+    fi
+}
+
+codex_config_file() {
+    echo "${CODEX_CONFIG_FILE:-$HOME/.codex/config.toml}"
+}
+
+is_project_trusted_in_codex_config() {
+    local config_file
+    config_file="$(codex_config_file)"
+
+    [ -f "$config_file" ] || return 1
+
+    awk -v project="$PLUGIN_DIR" '
+        $0 == "[projects.\"" project "\"]" { in_project=1; next }
+        /^\[/ { if (in_project) in_project=0 }
+        in_project && $0 ~ /^[[:space:]]*trust_level[[:space:]]*=[[:space:]]*"trusted"[[:space:]]*$/ { trusted=1 }
+        END { exit trusted ? 0 : 1 }
+    ' "$config_file"
+}
+
+upsert_project_trust_in_codex_config() {
+    local config_file
+    config_file="$(codex_config_file)"
+
+    mkdir -p "$(dirname "$config_file")"
+    [ -f "$config_file" ] || touch "$config_file"
+
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    awk -v project="$PLUGIN_DIR" '
+        BEGIN {
+            in_project=0
+            found_section=0
+            wrote_trust=0
+        }
+
+        $0 == "[projects.\"" project "\"]" {
+            in_project=1
+            found_section=1
+            wrote_trust=0
+            print
+            next
+        }
+
+        /^\[/ {
+            if (in_project && !wrote_trust) {
+                print "trust_level = \"trusted\""
+                wrote_trust=1
+            }
+            in_project=0
+        }
+
+        in_project && $0 ~ /^[[:space:]]*trust_level[[:space:]]*=/ {
+            if (!wrote_trust) {
+                print "trust_level = \"trusted\""
+                wrote_trust=1
+            }
+            next
+        }
+
+        { print }
+
+    END {
+        if (in_project && !wrote_trust) {
+            print "trust_level = \"trusted\""
+        }
+
+        if (!found_section) {
+            if (NR > 0) {
+                print ""
+            }
+            print "[projects.\"" project "\"]"
+            print "trust_level = \"trusted\""
+        }
+    }
+    ' "$config_file" > "$tmp_file"
+
+    mv "$tmp_file" "$config_file"
+}
+
+ensure_project_trust_preflight() {
+    if ! is_truthy "$CODEX_ENSURE_TRUSTED"; then
+        return 0
+    fi
+
+    if is_truthy "$CODEX_DANGEROUS_BYPASS"; then
+        return 0
+    fi
+
+    if is_project_trusted_in_codex_config; then
+        echo "🔐 Codex trust check: project is trusted."
+        return 0
+    fi
+
+    if is_truthy "$CODEX_AUTO_TRUST_PROJECT"; then
+        echo "🔐 Codex trust check: project is not trusted. Adding trusted entry..."
+        upsert_project_trust_in_codex_config
+        if is_project_trusted_in_codex_config; then
+            echo "✅ Added trust entry for: $PLUGIN_DIR"
+            return 0
+        fi
+        echo "❌ Failed to verify project trust after updating config."
+        exit 1
+    fi
+
+    echo "❌ Codex trust check failed: project is not trusted."
+    echo "   Project: $PLUGIN_DIR"
+    echo "   Config: $(codex_config_file)"
+    echo "   Fix with one of:"
+    echo "   CODEX_AUTO_TRUST_PROJECT=true ./codex-yolo"
+    echo "   CODEX_DANGEROUS_BYPASS=true ./codex-yolo   (dev-only, least safe)"
+    echo "   Or manually set [projects.\"$PLUGIN_DIR\"] trust_level=\"trusted\" in config.toml"
+    exit 1
+}
+
+install_dependencies() {
+    local tools=("$@")
+    local os_name
+    os_name="$(uname -s 2>/dev/null || echo unknown)"
+
+    if command -v brew >/dev/null 2>&1; then
+        brew update >/dev/null 2>&1 || true
+        for tool in "${tools[@]}"; do
+            case "$tool" in
+                node) brew install node ;;
+                npm) brew install node ;;
+                git) brew install git ;;
+                php) brew install php ;;
+                rsync) brew install rsync ;;
+                zip) brew install zip ;;
+                codex)
+                    if command -v npm >/dev/null 2>&1; then
+                        npm install -g @openai/codex
+                    fi
+                    ;;
+            esac
+        done
+        return 0
+    fi
+
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update -y
+        for tool in "${tools[@]}"; do
+            case "$tool" in
+                node) sudo apt-get install -y nodejs ;;
+                npm) sudo apt-get install -y nodejs npm ;;
+                git) sudo apt-get install -y git ;;
+                php) sudo apt-get install -y php-cli ;;
+                rsync) sudo apt-get install -y rsync ;;
+                zip) sudo apt-get install -y zip ;;
+                codex)
+                    if command -v npm >/dev/null 2>&1; then
+                        sudo npm install -g @openai/codex
+                    fi
+                    ;;
+            esac
+        done
+        return 0
+    fi
+
+    if command -v dnf >/dev/null 2>&1; then
+        for tool in "${tools[@]}"; do
+            case "$tool" in
+                node) sudo dnf install -y nodejs ;;
+                npm) sudo dnf install -y nodejs ;;
+                git) sudo dnf install -y git ;;
+                php) sudo dnf install -y php-cli ;;
+                rsync) sudo dnf install -y rsync ;;
+                zip) sudo dnf install -y zip ;;
+                codex)
+                    if command -v npm >/dev/null 2>&1; then
+                        sudo npm install -g @openai/codex
+                    fi
+                    ;;
+            esac
+        done
+        return 0
+    fi
+
+    if command -v yum >/dev/null 2>&1; then
+        for tool in "${tools[@]}"; do
+            case "$tool" in
+                node) sudo yum install -y nodejs ;;
+                npm) sudo yum install -y nodejs ;;
+                git) sudo yum install -y git ;;
+                php) sudo yum install -y php-cli ;;
+                rsync) sudo yum install -y rsync ;;
+                zip) sudo yum install -y zip ;;
+                codex)
+                    if command -v npm >/dev/null 2>&1; then
+                        sudo npm install -g @openai/codex
+                    fi
+                    ;;
+            esac
+        done
+        return 0
+    fi
+
+    if command -v pacman >/dev/null 2>&1; then
+        sudo pacman -Sy --noconfirm
+        for tool in "${tools[@]}"; do
+            case "$tool" in
+                node) sudo pacman -S --noconfirm nodejs ;;
+                npm) sudo pacman -S --noconfirm nodejs npm ;;
+                git) sudo pacman -S --noconfirm git ;;
+                php) sudo pacman -S --noconfirm php ;;
+                rsync) sudo pacman -S --noconfirm rsync ;;
+                zip) sudo pacman -S --noconfirm zip ;;
+                codex)
+                    if command -v npm >/dev/null 2>&1; then
+                        sudo npm install -g @openai/codex
+                    fi
+                    ;;
+            esac
+        done
+        return 0
+    fi
+
+    echo "⚠️  No supported package manager found on $os_name."
+    echo "   Install missing dependencies manually, then re-run."
+    return 1
+}
+
+# Create timestamped backup
+create_backup() {
+    local backup_dir="$PLUGIN_DIR/.codex-backups/$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$backup_dir"
+    
+    echo "💾 Creating backup..."
+    rsync -a --exclude='.git' --exclude='node_modules' --exclude='vendor' \
+        --exclude='.codex-backups' \
+        "$PLUGIN_DIR/" "$backup_dir/" 2>/dev/null || true
+    
+    log "Backup created: $backup_dir"
+}
+
+# Check if check.txt indicates clean state
+check_is_clean() {
+    if [ ! -f "$PLUGIN_DIR/check.txt" ]; then
+        return 1
+    fi
+    
+    local error_count warn_count
+    error_count=$(count_check_matches "ERROR")
+    warn_count=$(count_check_matches "WARNING")
+    
+    [ "$error_count" -eq 0 ] && [ "$warn_count" -eq 0 ]
+}
+
+# Display check.txt summary
+display_check_summary() {
+    if [ -f "$PLUGIN_DIR/check.txt" ]; then
+        local error_count warn_count
+        error_count=$(count_check_matches "ERROR")
+        warn_count=$(count_check_matches "WARNING")
+        
+        echo "📊 PHPCS Results: $error_count errors, $warn_count warnings"
+        
+        if [ "$error_count" -gt 0 ] || [ "$warn_count" -gt 0 ]; then
+            echo "   Top issues:"
+            head -20 "$PLUGIN_DIR/check.txt"
+        fi
+    fi
+}
+
+write_run_meta_and_asana_task() {
+    local exit_code="$1"
+    local php_version="${PHP_VERSION:-unknown}"
+
+    local end_time
+    end_time="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+    # PHPCS summary from check.txt
+    local error_count warn_count
+    error_count=$(count_check_matches "ERROR")
+    warn_count=$(count_check_matches "WARNING")
+
+    # Git info if available
+    local git_branch git_commit
+    git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    git_commit=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+    # JSON run meta
+    cat > "$RUN_META_FILE" <<EOF
+{
+  "plugin_slug": "$PLUGIN_SLUG",
+  "started_at": "$RUN_STARTED_AT",
+  "ended_at": "$end_time",
+  "exit_code": $exit_code,
+  "php_version": "$php_version",
+  "git_branch": "$git_branch",
+  "git_commit": "$git_commit",
+  "phpcs_errors": $error_count,
+  "phpcs_warnings": $warn_count
+}
+EOF
+
+    # Ensure Asana CSV has header
+    if [ ! -f "$ASANA_CSV_FILE" ]; then
+        cat > "$ASANA_CSV_FILE" <<'EOF'
+"Task ID","Created At","Completed At","Last Modified","Name","Section/Column","Assignee","Assignee Email","Start Date","Due Date","Tags","Notes","Projects","Parent task","Blocked By (Dependencies)","Blocking (Dependencies)","Priority","Tags (imported)"
+EOF
+    fi
+
+    # Build task name and notes
+    local task_name="Codex YOLO maintenance for $PLUGIN_SLUG"
+    local notes="Codex YOLO run on $RUN_LOCAL_DATE for $PLUGIN_SLUG. PHPCS: ${error_count} errors, ${warn_count} warnings. Git: ${git_branch} ${git_commit}."
+
+    # Escape double quotes for CSV
+    local name_escaped=${task_name//\"/\"\"}
+    local notes_escaped=${notes//\"/\"\"}
+
+    # Append Asana task row
+    # - Created At and Last Modified: RUN_LOCAL_DATE
+    # - Completed At: empty (open task)
+    # - Section/Column: Web Projects - James
+    # - Assignee / Email: your info
+    # - Projects: COA | Web
+    # - Priority: Medium
+    cat >> "$ASANA_CSV_FILE" <<EOF
+"","$RUN_LOCAL_DATE","","$RUN_LOCAL_DATE","$name_escaped","Web Projects - James","James Wilson | S","james.wilson@centerstone.org","","","","$notes_escaped","COA | Web","","","","Medium",""
+EOF
+}
+
+open_check_in_editor() {
+    if [ -f "$PLUGIN_DIR/check.txt" ]; then
+        local error_count warn_count
+        error_count=$(count_check_matches "ERROR")
+        warn_count=$(count_check_matches "WARNING")
+
+        if { [ "$error_count" -gt 0 ] || [ "$warn_count" -gt 0 ]; }; then
+            # Adjust this to your editor of choice
+            if command -v subl >/dev/null 2>&1; then
+                subl "$PLUGIN_DIR/check.txt" >/dev/null 2>&1 &
+            fi
+        fi
+    fi
+}
+
+# Exit with summary
+exit_with_summary() {
+    local exit_code="${1:-0}"
+
+    # Prevent recursion / double summary.
+    trap - EXIT INT TERM
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✨ Codex YOLO Summary"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    display_check_summary
+    echo ""
+
+    # Write JSON run meta and Asana CSV row (skip on dry-run).
+    if [ "$DRY_RUN" = false ]; then
+        write_run_meta_and_asana_task "$exit_code"
+    fi
+
+    if [ -d "$PLUGIN_DIR/.git" ]; then
+        echo "🔍 Git diff summary (since HEAD):"
+        git diff --stat HEAD || true
+    fi
+
+    if [ "$DRY_RUN" = false ] && [ "$RUN_DOCKER_TESTS" = "true" ] && [ "$DOCKER_USED" = true ] && has_docker; then
+        docker_down
+    fi
+
+    open_check_in_editor || true
+
+    append_learning_recap_if_needed "$exit_code"
+
+    exit "$exit_code"
+}
+
+# Track exit reason more reliably than "$?" at EXIT time.
+EXIT_CODE=0
+EXIT_REASON="normal"
+DOCKER_TEST_EXIT=0
+CHECK_EXIT=0
+
+handle_interrupt() {
+    EXIT_CODE=130
+    EXIT_REASON="SIGINT"
+    echo ""
+    echo "🛑 Interrupted (Ctrl+C). Cleaning up..."
+    exit_with_summary "$EXIT_CODE"
+}
+
+handle_terminate() {
+    EXIT_CODE=143
+    EXIT_REASON="SIGTERM"
+    echo ""
+    echo "🛑 Terminated. Cleaning up..."
+    exit_with_summary "$EXIT_CODE"
+}
+
+# Ensure Ctrl+C and termination always route through summary.
+trap handle_interrupt INT
+trap handle_terminate TERM
+
+# Fallback: normal exit path.
+trap 'status=$?; if [ "${EXIT_CODE:-0}" -ne 0 ]; then status="$EXIT_CODE"; fi; exit_with_summary "$status"' EXIT
+
+# ============================================================================
+# Parse Arguments
+# ============================================================================
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --interactive|-i)
+            INTERACTIVE_ONLY=true
+            shift
+            ;;
+        --subagents|--pipeline)
+            USE_SUBAGENTS=true
+            shift
+            ;;
+        --subagent-rounds=*)
+            SUBAGENT_ROUNDS="${1#*=}"
+            shift
+            ;;
+        --subagent-rounds)
+            if [[ -n "${2:-}" ]]; then
+                SUBAGENT_ROUNDS="$2"
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        *)
+            CODEX_MSG="$*"
+            break
+            ;;
+    esac
+done
+
+# ============================================================================
+# Main Script
+# ============================================================================
+
+cd "$PLUGIN_DIR"
+
+echo "🚀 Codex YOLO mode"
+echo "📂 Working directory: $PLUGIN_DIR"
+echo "🔧 Plugin slug: $PLUGIN_SLUG"
+[ "$DRY_RUN" = true ] && echo "🔍 DRY RUN MODE - no changes will be made"
+echo
+
+if is_truthy "$INTERACTIVE_ONLY"; then
+    if [ "$DRY_RUN" = true ]; then
+        echo "🔍 DRY RUN: Would open interactive Codex chat and skip autonomous workflow."
+        exit 0
+    fi
+
+    echo "🟢 Interactive mode enabled. Skipping autonomous workflow."
+    trap - EXIT INT TERM
+    if is_truthy "$CODEX_RESUME_LAST" && codex resume --help >/dev/null 2>&1; then
+        exec codex resume --last --sandbox "$CODEX_SANDBOX_MODE" -a on-request -C "$PLUGIN_DIR"
+    fi
+    exec codex --sandbox "$CODEX_SANDBOX_MODE" -a on-request --cd "$PLUGIN_DIR"
+fi
+
+GIT_ALLOW_DIRTY=${GIT_ALLOW_DIRTY:-false}
+
+if [ -d "$PLUGIN_DIR/.git" ]; then
+    if ! git diff-index --quiet HEAD -- 2>/dev/null && [ "$GIT_ALLOW_DIRTY" != "true" ]; then
+        echo "❌ Git working tree is dirty."
+        echo "   Commit or stash your changes first, or rerun with:"
+        echo "   GIT_ALLOW_DIRTY=true ./codex-yolo"
+        exit 1
+    fi
+fi
+
+# Check dependencies first
+check_dependencies
+ensure_project_trust_preflight
+
+# Verify PHP version
+PHP_VERSION=$(php -r 'echo PHP_VERSION;')
+if ! php -r 'exit(version_compare(PHP_VERSION, "7.4", ">=") ? 0 : 1);'; then
+    echo "⚠️  PHP 7.4+ recommended for WordPress, found $PHP_VERSION"
+fi
+
+# Create backup before major operations
+if [ "$RUN_BACKUP" = "true" ]; then
+    create_backup
+else
+    echo "ℹ️  Backup skipped (RUN_BACKUP=false)."
+fi
+
+AGENTS_FILE="$PLUGIN_DIR/AGENTS.md"
+AGENTS_MARKER="<!-- GENERATED_BY_CODEX_YOLO_AGENTS_V1 -->"
+
+AGENTS_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_AGENTS_V1 -->
+# Codex Agents
+
+## Primary Agent: WordPress Plugin Engineer
+
+You are an expert WordPress plugin engineer building modern, enterprise grade plugins suitable for distribution on wordpress.org and for use on large production sites.
+
+This repository will always be a WordPress plugin. Plugin specific details, such as name, description, and features, are defined in SPEC.md. This file defines how code must be written, structured, and tooled for every plugin.
+
+---
+
+## Absolute Autonomy Contract
+
+- Never ask the user what to do next.
+- Never pause for confirmation, review, saving, or continuation.
+- If a choice must be made, pick conservative, standards aligned defaults and continue.
+- If clarification would improve quality, record it in PLAN.md under "Questions (non-blocking)" but do not stop.
+- Goal: Keep moving forward in the SPEC. Test and lint.
+
+---
+
+## Available Skills (Local)
+
+When a task matches a skill name or description, open its `SKILL.md` and follow it for that turn. If multiple skills apply, use the minimal set that covers the request, in a clear order.
+
+- pdf: Read/create/review PDFs with layout-sensitive checks. (file: /Users/jameswilson/.codex/skills/pdf/SKILL.md)
+- wordpress-router: Classify WordPress repos and route to the right workflow. (file: /Users/jameswilson/.codex/skills/wordpress-router/SKILL.md)
+- wp-abilities-api: Use for WordPress Abilities API definitions and REST exposure. (file: /Users/jameswilson/.codex/skills/wp-abilities-api/SKILL.md)
+- wp-block-development: Gutenberg block development workflows. (file: /Users/jameswilson/.codex/skills/wp-block-development/SKILL.md)
+- wp-block-themes: Block theme workflows including theme.json/templates/patterns. (file: /Users/jameswilson/.codex/skills/wp-block-themes/SKILL.md)
+- wp-interactivity-api: Interactivity API directives/store/actions. (file: /Users/jameswilson/.codex/skills/wp-interactivity-api/SKILL.md)
+- wp-performance: Backend performance profiling and optimization. (file: /Users/jameswilson/.codex/skills/wp-performance/SKILL.md)
+- wp-phpstan: PHPStan config and fixes for WP projects. (file: /Users/jameswilson/.codex/skills/wp-phpstan/SKILL.md)
+- wp-playground: WP Playground workflows and blueprints. (file: /Users/jameswilson/.codex/skills/wp-playground/SKILL.md)
+- wp-plugin-development: WordPress plugin architecture, hooks, security, packaging. (file: /Users/jameswilson/.codex/skills/wp-plugin-development/SKILL.md)
+- wp-project-triage: Deterministic repo inspection and JSON report. (file: /Users/jameswilson/.codex/skills/wp-project-triage/SKILL.md)
+- wp-rest-api: REST API endpoints, schemas, permissions. (file: /Users/jameswilson/.codex/skills/wp-rest-api/SKILL.md)
+- wp-wpcli-and-ops: WP-CLI operations and automation. (file: /Users/jameswilson/.codex/skills/wp-wpcli-and-ops/SKILL.md)
+- wpds: WordPress Design System UI guidance. (file: /Users/jameswilson/.codex/skills/wpds/SKILL.md)
+- skill-creator: Create or update skills. (file: /Users/jameswilson/.codex/skills/.system/skill-creator/SKILL.md)
+- skill-installer: Install skills from curated list or repo. (file: /Users/jameswilson/.codex/skills/.system/skill-installer/SKILL.md)
+
+---
+
+## Repository Indexing and State Detection
+
+Before writing or modifying code, you must understand the project structure and important files. Use a cached index when possible instead of re-reading every file on every pass.
+
+### Index manifest
+
+- Maintain a JSON file at the repository root named `.codex_index.json`.
+- This file stores at least:
+  - Last indexed git commit hash (if the repository is a git repo).
+  - Whether the working tree was clean or dirty at that time.
+  - A summary list of important files and their roles:
+    - Main plugin file
+    - Loader
+    - Main plugin class
+    - Settings
+    - Logger
+    - Providers
+    - Clients
+    - Shortcodes
+    - Blocks
+    - Admin UI
+    - Tests
+    - Logging
+    - Build tooling
+
+### Directory and file rules
+
+When you walk the repository to build or refresh the index:
+
+- Do not descend into:
+  - Hidden files or directories whose name begins with a dot
+  - Common vendor/build dirs: node_modules, vendor, dist, build, .cache
+- Only include source files that are relevant to the plugin:
+  - PHP source
+  - JS / CSS in admin/public
+  - Test files
+  - Tooling configs
+
+### Indexing algorithm
+
+1. Try to detect git state:
+   - If git is available:
+     - Run `git rev-parse HEAD` to get current_commit.
+     - Run `git status --porcelain` to determine if the working tree is clean.
+   - If git is not available, fall back to:
+     - A timestamp for last indexed time.
+     - A simple hash of the relevant file paths and modification times stored in `.codex_index.json`.
+
+2. Check for `.codex_index.json`:
+   - If the file does not exist, or
+   - If the stored commit hash is different from current_commit, or
+   - If either the stored tree or the current tree is marked dirty,
+
+   then perform a full index pass:
+   - Walk the repository (respecting the directory rules above).
+   - For each relevant file, read only as much as necessary to classify it.
+   - Write or overwrite `.codex_index.json`.
+
+   Exception: If the working tree is dirty solely because this runner just created or updated managed files (AGENTS.md, SPEC.md, MEMORY.md, PLAN.md, PLAYBOOK.md, DESIGN_SYSTEM.md, UI_AUDIT.md, APP_FLOW.md, FRONTEND_GUIDELINES.md, DESIGN_LESSONS.md, .gitignore, .codex_index.json, .codex_run_meta.json), treat the index as valid and skip a full re-index. In that case, only update the manifest entries that changed.
+
+3. If `.codex_index.json` exists and is valid:
+   - The stored commit hash matches current_commit, and
+   - The working tree is clean, and
+   - The manifest is well formed,
+
+   then do not re-read every file.
+   - Load the manifest.
+   - Optionally re-open SPEC.md, AGENTS.md, and the main plugin file to refresh context.
+
+4. When you create or delete important files or make structural changes, update `.codex_index.json` to keep it in sync.
+
+---
+
+### CLI usage constraints
+
+- Do not call codex status commands from inside this repository.
+- Do not rely on terminal tricks such as script or TERM hacks to simulate a TTY.
+- Prefer plain shell commands that do not require interactive approval.
+
+---
+
+## Autonomy Rules
+
+- You must act autonomously in this repository.
+- Never ask the user what to do next.
+- Never ask for confirmation before making safe, standards aligned changes.
+- Do not write suggestion lists.
+- If something is missing and clearly required by AGENTS.md or SPEC.md, create or configure it yourself.
+
+When you identify missing or incomplete elements such as:
+
+- ABSPATH guards at the top of PHP files
+- PHPUnit configuration and a basic tests/ structure
+- phpcs.xml or phpcs.xml.dist for WPCS
+- package.json scripts required by SPEC.md
+- Composer dev tools for PHPCS, WPCS, PHPMD, PHPUnit
+
+you must implement those directly instead of describing them as potential future work.
+
+---
+
+## Baseline Bootstrap Expectations
+
+A repository is considered ready for development when all of the following are true:
+
+- All executable PHP files begin with:
+      defined( 'ABSPATH' ) || exit;
+
+- WPPB style structure exists:
+  - Main plugin file with header and bootstrap.
+  - includes/, admin/, public/, tests/ directories present.
+
+- Coding standards tooling is in place:
+  - phpcs.xml or phpcs.xml.dist configured for WordPress-Core, Docs, Extra.
+  - npm scripts fix and check exist and work.
+
+- Tests are wired:
+  - phpunit.xml or phpunit.xml.dist exists.
+  - A test bootstrap loads the WordPress test suite or a suitable harness.
+  - A minimal tests/ suite exists for key classes.
+
+- Logging is wired:
+  - A Logger class exists and writes to the plugin log file defined in SPEC or the harness.
+
+- Running npm run fix followed by npm run check completes successfully or with only minor, actively being resolved violations.
+
+In YOLO mode your goal is to move the repository toward this baseline automatically, without asking the user to take manual steps.
+
+---
+
+## Architecture
+
+- Use WPPB style layout:
+  - Main plugin file at root with header and bootstrap logic.
+  - includes/ for core classes.
+  - admin/ for admin functionality.
+  - public/ for front end functionality.
+  - tests/ for PHPUnit.
+
+- Use classes and a loader to register hooks.
+- Avoid anonymous functions when named methods improve testability or unhooking.
+
+- No direct access to PHP files:
+  - Every executable PHP file must begin with:
+      defined( 'ABSPATH' ) || exit;
+
+---
+
+## Coding Standards
+
+- Must comply with WordPress Coding Standards (WPCS).
+- Short array syntax.
+- Tabs for indentation.
+- No trailing whitespace.
+- Descriptive names for classes, methods, and variables.
+- Each file must include a file level docblock.
+- Each class and public method must include a docblock.
+
+PHPCS and WPCS:
+
+- Repo must include a phpcs.xml or phpcs.xml.dist file.
+- Use WordPress-Core, WordPress-Docs, and WordPress-Extra.
+- Exclude vendor/ and node_modules/ at minimum.
+
+When npm run check writes check.txt, read it and fix violations until clean.
+
+---
+
+## Security, Sanitization, and Escaping
+
+- Sanitize input.
+- Escape output.
+- Admin actions and AJAX endpoints must:
+  - Check capabilities.
+  - Verify nonces.
+- Direct DB access must:
+  - Use $wpdb->prepare.
+
+---
+
+## Internationalization (i18n)
+
+- All user facing strings must be translatable.
+- Use standard WordPress i18n functions.
+- Load text domain from SPEC.md.
+- Main plugin file must call load_plugin_textdomain.
+
+---
+
+## Testing
+
+- Must include PHPUnit tests.
+- Requires phpunit.xml or phpunit.xml.dist.
+- Requires a bootstrap that loads the WordPress test suite or a test harness.
+
+When adding or changing functionality, update or add PHPUnit tests.
+
+---
+
+## Logging and Error Handling
+
+- Must include a reusable logging system.
+- Implement a Logger class.
+
+EOF
+)
+
+ensure_managed_file "$AGENTS_FILE" "AGENTS.md" "$AGENTS_MARKER" "$AGENTS_CONTENT"
+
+SPEC_FILE="$PLUGIN_DIR/SPEC.md"
+SPEC_MARKER="<!-- GENERATED_BY_CODEX_YOLO_SPEC_V1 -->"
+
+SPEC_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_SPEC_V1 -->
+# SPEC
+
+This SPEC defines how Codex operates inside this repository and how it coordinates with AGENTS.md, tooling, and cached state.
+
+Codex must read the following files before making changes:
+- AGENTS.md
+- SPEC.md
+- MEMORY.md
+- PLAN.md
+- PLAYBOOK.md
+
+## Absolute Execution Rules
+
+- Never pause to ask for confirmation, review, saving, or continuation.
+- Never block on unanswered questions.
+- If a choice must be made, pick conservative, standards aligned defaults and continue.
+- If clarification would improve quality, record it in PLAN.md under "Questions (non-blocking)" but do not stop.
+- Goal: Keep moving forward in the SPEC. Test and lint.
+
+---
+
+## 1. Repository Assumptions
+
+This repository is always a WordPress plugin. The root directory contains:
+
+- AGENTS.md
+- SPEC.md (this file)
+- PLAYBOOK.md
+- package.json (contains fix and check scripts)
+- WPPB-style folders: includes/, admin/, public/, tests/
+- Optional runner artifacts:
+  - .codex_index.json
+  - .codex_run_meta.json
+  - .codex_tasks.csv
+  - .codex-backups/
+
+If any required part is missing or incomplete, Codex must create or repair it autonomously.
+
+---
+
+## 2. Codex Execution Modes
+
+Codex may be invoked under different modes. These modes are advisory and allow flexibility.
+
+Supported modes include:
+
+- yolo (full autonomy, default)
+- fix-only (linters and autofixes, no structural work)
+- test-only (focus on PHPUnit)
+- analyze (classify repo and improve by changes)
+- scaffold (create missing WPPB structure, tests, logging, tooling)
+- bootstrap (scaffold then converge)
+- release (optional, future)
+
+If no mode is specified, treat the run as yolo.
+
+---
+
+## 3. Workflow: Fix, Check, Converge
+
+Codex must use an iterative convergence loop:
+
+1. Apply changes based on AGENTS.md and repository state.
+2. Run npm run fix
+3. Run npm run check (writes check.txt)
+4. Read check.txt and treat violations as the backlog
+5. Continue until check.txt shows:
+   - errors == 0 and warnings == 0
+   or the runner reaches the iteration cap
+
+Notes:
+- If tests fail and block execution, fix tests first.
+- Do not stop mid-run. Keep moving forward.
+
+---
+
+## 4. Tests and Diagnostics
+
+If PHPUnit, PHPMD, or other tools exist:
+
+- Tools must be respected.
+- Failures must not be ignored.
+- Test failures should be corrected before chasing style violations when failures block execution.
+- New code should have test coverage where appropriate.
+
+---
+
+## 5. Indexing, Cached State, and Manifest
+
+Codex may use .codex_index.json to reduce full repo re-reads:
+
+- If manifest commit matches current commit and tree is clean:
+  - Use the manifest and avoid full re-index.
+- If commit differs or tree is dirty:
+  - Re-index and rewrite the manifest.
+
+---
+
+## 6. Modernization Policy: Safe vs Surgery
+
+Codex must read the MODERNIZE_POLICY environment variable when set.
+
+### 6.1 Safe (default)
+
+If MODERNIZE_POLICY is safe or unset:
+
+- Preserve existing structure as much as possible.
+- Do not refactor large procedural sections into class-based architecture unless trivial.
+- Do not change public APIs, hook names, or function signatures.
+- Do not remove files or rename directories.
+- May add:
+  - PHPCS fixes
+  - ABSPATH guards
+  - logging
+  - tests
+  - i18n wrappers
+  - sanitization and escaping
+  - fixes for deprecated APIs
+  - security fixes
+  - WPPB scaffolding only if the plugin is basically empty or missing structure
+
+### 6.2 Surgery
+
+If MODERNIZE_POLICY is surgery, Codex may:
+
+- Create or rearrange WPPB directories
+- Extract procedural code into classes
+- Split monolithic files into smaller modules
+- Consolidate duplicated logic
+- Add or update tests for extracted logic
+
+### 6.3 Behavioral Guarantees
+
+Regardless of policy, Codex must:
+
+- Preserve functional behavior unless tests require adaptation
+- Maintain plugin headers, slugs, and text domains
+- Keep or improve security posture
+- Converge toward PHPCS clean where possible
+- Update or add tests when behavior changes in surgery mode
+
+---
+
+## 7. Archival and Backup Behavior
+
+Backups, metadata, run summaries, or changelogs may be written to:
+
+- .codex-backups/
+- .codex_index.json
+- .codex_run_meta.json
+- .codex_tasks.csv
+
+Codex must treat these artifacts as protected and must not lint or rewrite them.
+
+---
+
+## 8. Uncertainty Policy
+
+When requirements are unclear:
+
+- Choose the most conservative, standards aligned implementation.
+- Prefer scaffolding, interfaces, placeholders, or TODOs over blocking execution.
+- Never ask the user to choose between approaches mid-run.
+- Record notes in PLAN.md if helpful, but continue.
+
+---
+
+## 9. Completion Criteria
+
+A session is considered converged when:
+
+- check.txt indicates 0 errors and 0 warnings, or the runner hits its iteration limit after making best effort progress
+- tests pass (when configured)
+- AGENTS.md rules are satisfied
+- the repo is in a better state than it started
+
+---
+
+## 10. Summary of Required Behavior
+
+- Follow AGENTS.md and this SPEC.
+- Use npm run fix and npm run check to converge.
+- Treat check.txt as the backlog.
+- Create missing elements instead of asking for guidance.
+- Use cached index when valid.
+- Maintain autonomy and keep moving forward.
+
+EOF
+)
+
+ensure_managed_file "$SPEC_FILE" "SPEC.md" "$SPEC_MARKER" "$SPEC_CONTENT"
+
+# 0.2 Ensure MEMORY.md exists
+MEMORY_CONTENT=$(cat <<EOF
+<!-- GENERATED_BY_CODEX_YOLO_MEMORY_V1 -->
+# Project Memory
+
+This file is persistent context for Codex runs. Keep it short and practical.
+
+## Project
+- Plugin slug: $PLUGIN_SLUG
+- Repo root: $PLUGIN_DIR
+
+## Non-negotiables
+- WordPress Coding Standards (WPCS).
+- Tabs for indentation in code.
+- No em dashes in assistant output.
+- When updating code you must output full updated methods or full updated files when requested.
+- Prefer WPPB structure: includes/, admin/, public/, tests/.
+- Do not stop mid-run. Keep moving forward in the SPEC. Test and lint.
+
+## Tooling workflow
+- Primary loop:
+  - npm run fix
+  - npm run check (writes check.txt)
+- Treat check.txt as the backlog.
+
+## Packaging
+- The build zip process uses .gitignore to decide what ships. Do not add dev artifacts to the distributable.
+
+## Run recap log
+Append a brief recap after each run:
+- Date:
+- Summary:
+- Notable changes:
+- Tool results:
+- Remaining gaps:
+EOF
+)
+
+ensure_once_file "$MEMORY_FILE" "MEMORY.md" "$MEMORY_CONTENT"
+
+# 0.3 Ensure PLAN.md exists
+PLAN_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_PLAN_V1 -->
+# Plan
+
+Codex must keep this file updated during each run.
+
+## Goal
+Describe what this run is trying to accomplish.
+
+## Assumptions
+List assumptions being made.
+
+## Questions (non-blocking)
+List any questions that could improve quality, but do NOT stop execution because of them.
+Proceed with reasonable defaults and keep implementing the SPEC.
+
+## Files to change
+List the files intended to be modified.
+
+## Steps
+1.
+2.
+3.
+
+## Commands to run
+- npm run fix
+- npm run check
+- phpunit (if configured)
+
+## Acceptance criteria
+- PHPCS clean (0 errors, 0 warnings) or explain why not possible.
+- Tests pass (if configured).
+EOF
+)
+
+ensure_once_file "$PLAN_FILE" "PLAN.md" "$PLAN_CONTENT"
+
+# 0.35 Ensure PLAYBOOK.md exists for reusable learnings
+PLAYBOOK_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_PLAYBOOK_V1 -->
+# Plugin Build Notes (Reusable)
+
+This file captures reusable lessons from building WordPress plugins in this repo style and environment. It is intentionally generic and should apply to future plugins built with similar tooling.
+
+## Environment Assumptions
+- Local dev runs inside a full WordPress install; tests run in Docker.
+- The repo may include a local WP core checkout and WP test suite to speed up CI and repeatable tests.
+- Use WPPB-style structure with a main plugin file, `includes/`, `admin/`, `public/`, `tests/`.
+
+## Test Harness Lessons
+- Local `phpunit` should not be the primary path if the DB is only available in Docker. A local run should fail fast or be optional.
+- Docker test container must install WP core + WP test suite and then run PHPUnit.
+- WordPress tests require Yoast PHPUnit Polyfills; set `WP_TESTS_PHPUNIT_POLYFILLS_PATH` or load Composer autoload before the WP bootstrap.
+- WP test config must define required constants (e.g., `WP_TESTS_DOMAIN`, `WP_TESTS_EMAIL`, `WP_TESTS_TITLE`, `WP_PHP_BINARY`).
+- The WP tests config must be environment-aware (local vs Docker paths) instead of hardcoding `/work/...`.
+- For Docker DB creation, prefer a `mysql` invocation that works with MariaDB clients (avoid unsupported flags).
+- If local tests depend on a `.wp-tests` directory, ensure bootstrap guards for missing paths and fail with a clear error to avoid confusing PHPUnit failures.
+
+## Tooling and Standards
+- Use WPCS (Core/Docs/Extra) with `phpcs.xml.dist` and `npm run check` writing to `check.txt`.
+- Provide `npm run fix` and `npm run check` scripts for repeatable linting.
+- Keep Composer dev dependencies to standard tooling: PHPCS/WPCS, PHPMD, PHPUnit, and PHPUnit Polyfills.
+- If Composer installs PHPCS/WPCS, ensure the installer is allowed in Composer config.
+- Keep WordPress Coding Standards enforced in every PHP file: docblocks, short arrays, tabs for indent, no trailing whitespace, and `defined( 'ABSPATH' ) || exit;` guards.
+
+## Plugin Architecture Expectations
+- Use a loader class to register actions and filters.
+- Avoid anonymous hooks when named methods help testability and unhooking.
+- Implement settings and logging classes early because they affect admin UX and diagnostics.
+- Make internationalization explicit with a text domain and `load_plugin_textdomain` in the main bootstrap.
+- Provide a logger early and make it configurable via a constant or filter so tests can redirect logs to a temp file.
+
+## Caching and Performance
+- Use object cache + transients with a cache-buster option for invalidation.
+- Avoid full table scans and big in-memory result sets; query in chunks.
+- Keep sitemap generation deterministic and ordered for caching and diffing.
+
+## Security and Data Handling
+- Sanitize all inputs, escape all outputs.
+- Admin actions and meta updates must validate nonces and capabilities.
+- Use `$wpdb->prepare()` for direct DB access.
+
+## Debug and Observability
+- Provide a logger that can be configured via filter to a safe log location.
+- When debug mode is enabled, emit headers or metadata that expose cache state, generation time, and exclusions.
+
+## WPCS Gotchas and Fixes
+- WPCS flags direct filesystem calls in PHP and tests; prefer `WP_Filesystem()` + `$wp_filesystem` and `wp_delete_file()`.
+- Avoid using reserved keywords (like `default`) for parameter names in PHPDoc or method signatures.
+- PHPUnit bootstraps that define ABSPATH can satisfy "no direct access" guards; add a const in `phpunit.xml.dist` if needed.
+
+## Settings + Options Patterns
+- Register settings with a sanitize callback and merge with defaults using `wp_parse_args`.
+- Use a single option array for plugin settings to reduce option churn.
+- Admin settings pages should use core `settings_fields()` and `do_settings_sections()` for compatibility.
+
+## Data Storage and Queries
+- WPCS is strict about `$wpdb->prepare()` usage; avoid interpolating table names/placeholder strings.
+- When dynamic `IN (...)` lists are needed, prefer safer alternatives (e.g., looped updates, or WP_Query offsets).
+- If you need persistent state between cron runs, store a small crawl state array in a single option.
+- Keep storage bounded with pruning so tables remain small.
+
+## Cron and Background Work
+- Use a transient lock to prevent overlapping cron runs.
+- Schedule events with a small future offset to avoid immediate contention after activation.
+- Never run heavy work on frontend requests; hook to WP Cron or background processes.
+
+## Notifications
+- Send one summary email per run with only new/changed issues to prevent alert fatigue.
+- Cap notification lists to a small number of items, with a “and N more” line for readability.
+
+## Indexing and Autonomy Workflow
+- Maintain a lightweight repo index file to avoid re-reading the full tree on every pass.
+- Update the index after structural or tooling changes.
+- Prefer conservative defaults and keep moving forward without blocking on confirmations.
+EOF
+)
+
+ensure_once_file "$PLAYBOOK_FILE" "PLAYBOOK.md" "$PLAYBOOK_CONTENT"
+
+# 0.36 Ensure UI governance docs exist (design/system/flow)
+DESIGN_SYSTEM_FILE="$PLUGIN_DIR/DESIGN_SYSTEM.md"
+DESIGN_SYSTEM_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_DESIGN_SYSTEM_V1 -->
+# DESIGN_SYSTEM.md
+
+## Purpose
+Defines all visual tokens, component standards, and UI consistency rules.
+All UI styling MUST reference values defined in this file. No hardcoded design values allowed.
+
+---
+
+# Core Philosophy
+
+- Simplicity is architecture.
+- Every element must justify its existence.
+- Consistency is mandatory.
+- Mobile-first design is the default.
+- Accessibility is not optional.
+
+---
+
+# Typography
+
+## Font Stack
+Primary:
+- System UI stack or project defined web font
+
+Fallback:
+- Arial, Helvetica, sans-serif
+
+---
+
+## Type Scale
+
+| Token | Size |
+|--------|----------|
+| text-xs | 12px |
+| text-sm | 14px |
+| text-base | 16px |
+| text-lg | 18px |
+| text-xl | 20px |
+| text-2xl | 24px |
+| text-3xl | 32px |
+
+---
+
+## Font Weight Tokens
+
+- weight-regular: 400
+- weight-medium: 500
+- weight-semibold: 600
+- weight-bold: 700
+
+---
+
+# Spacing Scale
+
+All margins, padding, and layout spacing MUST use these values.
+
+| Token | Value |
+|----------|-----------|
+| space-1 | 4px |
+| space-2 | 8px |
+| space-3 | 12px |
+| space-4 | 16px |
+| space-5 | 24px |
+| space-6 | 32px |
+| space-7 | 48px |
+
+---
+
+# Border Radius
+
+- radius-sm: 4px
+- radius-md: 8px
+- radius-lg: 12px
+- radius-xl: 16px
+
+---
+
+# Shadows
+
+- shadow-sm: subtle elevation for cards
+- shadow-md: modals, dropdowns
+- shadow-lg: overlays
+
+---
+
+# Color Tokens
+
+## Semantic Colors
+
+### Primary
+Used for main CTAs and brand highlights.
+
+### Secondary
+Used for supporting elements.
+
+### Success
+Used for confirmations and positive states.
+
+### Warning
+Used for caution and validation warnings.
+
+### Danger
+Used for destructive or error actions.
+
+### Neutral
+Used for backgrounds, borders, and layout separation.
+
+---
+
+# Accessibility Requirements
+
+- Minimum contrast ratio: WCAG AA
+- Focus indicators must be visible
+- Keyboard navigation must function fully
+- Labels required for all form inputs
+
+---
+
+# Layout Rules
+
+- Content should align to consistent grid
+- Vertical rhythm must follow spacing scale
+- Avoid nested card patterns when possible
+
+---
+
+# Component Standards
+
+## Buttons
+
+### Primary Button
+- Used for single main action
+- Must be visually dominant
+
+### Secondary Button
+- Supporting actions only
+
+### Danger Button
+- Destructive actions only
+
+---
+
+## Forms
+
+- Labels must be visible
+- Validation messages must be clear
+- Inline help text allowed
+
+---
+
+## Cards
+
+- Use consistent padding token
+- Use defined radius token
+- Avoid decorative styling without purpose
+
+---
+
+## Tables
+
+- Use consistent row spacing
+- Maintain readable density
+- Provide hover feedback
+
+---
+
+# Responsiveness
+
+- Mobile-first required
+- Touch targets minimum 44px height
+- Layout must adapt fluidly between breakpoints
+
+---
+
+# Motion Guidelines
+
+- Motion must reinforce feedback
+- Avoid decorative animation
+- Transitions must feel natural and responsive
+
+---
+
+# Token Update Rules
+
+If new values are needed:
+
+1. Propose change
+2. Get approval
+3. Add token here
+4. Implement using token
+EOF
+)
+
+ensure_once_file "$DESIGN_SYSTEM_FILE" "DESIGN_SYSTEM.md" "$DESIGN_SYSTEM_CONTENT"
+
+UI_AUDIT_FILE="$PLUGIN_DIR/UI_AUDIT.md"
+UI_AUDIT_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_UI_AUDIT_V1 -->
+# UI_AUDIT.md
+
+## Purpose
+Tracks UI design audits, phased improvements, and approval status.
+
+---
+
+# Latest Audit
+
+## Overall Assessment
+[Summary of current UI quality]
+
+---
+
+# PHASE 1 — Critical Fixes
+Usability blockers and layout issues.
+
+- [ ] Component:
+  - Problem:
+  - Recommended Fix:
+  - Reason:
+
+---
+
+# PHASE 2 — Refinement
+Improves visual hierarchy and consistency.
+
+- [ ] Component:
+  - Problem:
+  - Recommended Fix:
+  - Reason:
+
+---
+
+# PHASE 3 — Polish
+Premium feel enhancements.
+
+- [ ] Component:
+  - Problem:
+  - Recommended Fix:
+  - Reason:
+
+---
+
+# Approval Log
+
+| Phase | Approved By | Date |
+|-----------|---------------|------------|
+
+---
+
+# Implementation Notes
+
+Detailed instructions for build agent.
+
+---
+
+# Design Scorecard
+
+| Category | Score |
+|---------------|-----------|
+| Hierarchy | |
+| Consistency | |
+| Accessibility | |
+| Responsiveness | |
+| Visual Polish | |
+EOF
+)
+
+ensure_once_file "$UI_AUDIT_FILE" "UI_AUDIT.md" "$UI_AUDIT_CONTENT"
+
+APP_FLOW_FILE="$PLUGIN_DIR/APP_FLOW.md"
+APP_FLOW_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_APP_FLOW_V1 -->
+# APP_FLOW.md
+
+## Purpose
+Documents user journeys and screen behavior expectations.
+
+---
+
+# Admin User Flow
+
+## Settings Configuration
+
+1. User opens plugin settings
+2. User updates configuration
+3. User saves changes
+4. Confirmation message displayed
+
+---
+
+# Data Management Flow
+
+1. User opens list view
+2. User filters or searches entries
+3. User edits or deletes item
+4. System confirms changes
+
+---
+
+# Front-End Flow
+
+## Form Submission
+
+1. User loads page
+2. User selects location or option
+3. User completes form
+4. Success message appears
+5. Follow-up instructions displayed
+
+---
+
+# Error States
+
+- Display clear and friendly messaging
+- Offer recovery path
+
+---
+
+# Loading States
+
+- Provide spinner or skeleton UI
+- Avoid blank screens
+
+---
+
+# Empty States
+
+- Provide explanation of empty data
+- Provide action to create first entry
+EOF
+)
+
+ensure_once_file "$APP_FLOW_FILE" "APP_FLOW.md" "$APP_FLOW_CONTENT"
+
+FRONTEND_GUIDELINES_FILE="$PLUGIN_DIR/FRONTEND_GUIDELINES.md"
+FRONTEND_GUIDELINES_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_FRONTEND_GUIDELINES_V1 -->
+# FRONTEND_GUIDELINES.md
+
+## Purpose
+Defines engineering standards for UI implementation.
+
+---
+
+# Framework Standards
+
+- Bootstrap 5 is the primary UI framework.
+- Use Bootstrap utilities before custom CSS.
+- Avoid overriding Bootstrap core classes unless necessary.
+
+---
+
+# Markup Rules
+
+- Use semantic HTML elements.
+- Avoid div-only structures when semantic elements exist.
+- Maintain consistent indentation.
+
+---
+
+# CSS Rules
+
+- Use token values from DESIGN_SYSTEM.md
+- Avoid hardcoded spacing or color values
+- Group component styles logically
+
+---
+
+# JavaScript UI Behavior
+
+- Avoid heavy UI frameworks unless required
+- Use progressive enhancement
+- Ensure accessibility in dynamic UI
+
+---
+
+# WordPress Admin Styling
+
+- Respect WP admin UI patterns
+- Avoid breaking native admin experience
+- Maintain consistency with WordPress design language
+
+---
+
+# Component Structure
+
+- Each UI component should be reusable
+- Avoid duplicating markup patterns
+- Maintain consistent naming conventions
+
+---
+
+# Accessibility Engineering
+
+- Ensure ARIA labels exist
+- Maintain keyboard navigation
+- Avoid hover-only interactions
+
+---
+
+# Responsiveness
+
+- Validate layouts across:
+  - Mobile
+  - Tablet
+  - Desktop
+
+---
+
+# Testing UI Changes
+
+Before shipping:
+- Verify accessibility
+- Validate responsive layout
+- Confirm token compliance
+EOF
+)
+
+ensure_once_file "$FRONTEND_GUIDELINES_FILE" "FRONTEND_GUIDELINES.md" "$FRONTEND_GUIDELINES_CONTENT"
+
+DESIGN_LESSONS_FILE="$PLUGIN_DIR/DESIGN_LESSONS.md"
+DESIGN_LESSONS_CONTENT=$(cat <<'EOF'
+<!-- GENERATED_BY_CODEX_YOLO_DESIGN_LESSONS_V1 -->
+# DESIGN_LESSONS.md
+
+## Purpose
+Stores learned design patterns and recurring mistakes to avoid.
+
+---
+
+# Spacing Lessons
+
+- Avoid stacking multiple spacing utilities.
+- Use consistent vertical rhythm tokens.
+
+---
+
+# Typography Lessons
+
+- Limit number of font sizes on a screen.
+- Use size hierarchy for importance.
+
+---
+
+# Component Lessons
+
+- Reuse button styles consistently.
+- Avoid creating multiple card variations unnecessarily.
+
+---
+
+# Table Lessons
+
+- Maintain readable density.
+- Avoid overcrowded data layouts.
+
+---
+
+# Modal Lessons
+
+- Keep modals focused on single tasks.
+- Avoid multi-step workflows inside modals.
+
+---
+
+# Accessibility Lessons
+
+- Always test keyboard navigation.
+- Ensure contrast compliance.
+
+---
+
+# Interaction Lessons
+
+- Provide feedback for user actions.
+- Avoid decorative animation.
+
+---
+
+# Future Improvements
+
+- Track emerging UI patterns
+- Document reusable design strategies
+EOF
+)
+
+ensure_once_file "$DESIGN_LESSONS_FILE" "DESIGN_LESSONS.md" "$DESIGN_LESSONS_CONTENT"
+
+# 0.35 Ensure .gitignore exists with WordPress defaults and Codex artifacts excluded
+GITIGNORE_FILE="$PLUGIN_DIR/.gitignore"
+GITIGNORE_MARKER="# GENERATED_BY_CODEX_YOLO_GITIGNORE_V1"
+GITIGNORE_CONTENT=$(cat <<'EOF'
+# GENERATED_BY_CODEX_YOLO_GITIGNORE_V1
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# WP / PHP
+wp-config.php
+wp-config-local.php
+*.log
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+dist/
+build/
+.cache/
+
+# Codex and local artifacts
+.codex-backups/
+.codex_index.json
+.codex_run_meta.json
+.codex_tasks.csv
+check.txt
+phpmd.txt
+
+# WP test harness (local only)
+.wp-core/
+.wp-tests/
+EOF
+)
+
+ensure_managed_file "$GITIGNORE_FILE" ".gitignore" "$GITIGNORE_MARKER" "$GITIGNORE_CONTENT"
+ensure_lines_in_file "$GITIGNORE_FILE" \
+    ".cstn-generator/" \
+    "check.txt" \
+    "phpmd.txt" \
+    "plugin-error.log" \
+    ".codex_index.json" \
+    ".codex_run_meta.json" \
+    ".codex_tasks.csv" \
+    ".codex_test_output.log" \
+    "AGENTS.md" \
+    "SPEC.md" \
+    "MEMORY.md" \
+    "PLAN.md" \
+    "PLAYBOOK.md" \
+    "DESIGN_SYSTEM.md" \
+    "UI_AUDIT.md" \
+    "APP_FLOW.md" \
+    "FRONTEND_GUIDELINES.md" \
+    "DESIGN_LESSONS.md"
+
+# 0.4 Ensure Docker harness + preflight tests
+if [ "$DRY_RUN" = false ] && [ "$RUN_DOCKER_TESTS" = "true" ]; then
+    ensure_docker_harness
+
+    if has_docker; then
+        docker_up
+        DOCKER_USED=true
+
+        set +e
+        docker_tests
+        DOCKER_TEST_EXIT=$?
+        set -e
+
+        if [ "$DOCKER_TEST_EXIT" -ne 0 ]; then
+            log "⚠️ Docker tests failed before Codex (exit $DOCKER_TEST_EXIT). Continuing anyway."
+        else
+            log "✅ Docker tests passed before Codex."
+        fi
+    else
+        log "ℹ️ Docker not available. Harness generated, tests skipped."
+    fi
+fi
+
+# 1. Detect whether any plugin structure exists yet
+MAIN_PHP_COUNT=$(find "$PLUGIN_DIR" -maxdepth 1 -type f -name "*.php" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$MAIN_PHP_COUNT" -eq 0 ] && [ ! -d "$PLUGIN_DIR/includes" ] && [ ! -d "$PLUGIN_DIR/admin" ] && [ ! -d "$PLUGIN_DIR/public" ]; then
+    echo "🧱 No plugin structure detected."
+
+    notify_user "No plugin structure found. Gathering plugin metadata."
+    plugin_name="$(ask_decision "plugin_name" "Plugin name" "$(senior_decide "plugin_name")")"
+    plugin_slug="$PLUGIN_SLUG"
+    plugin_desc="$(ask_decision "plugin_description" "Plugin description" "$(senior_decide "plugin_description")")"
+    author_name="$(ask_decision "author_name" "Author name" "$(senior_decide "author_name")")"
+    author_email="$(ask_decision "author_email" "Author email" "$(senior_decide "author_email")")"
+    author_url="$(ask_decision "author_url" "Author URL" "$(senior_decide "author_url")")"
+
+    echo "📋 Selected metadata:"
+    echo "   Plugin Name: $plugin_name"
+    echo "   Plugin Slug: $plugin_slug"
+    echo "   Description: $plugin_desc"
+    echo "   Author: $author_name <$author_email>"
+    echo "   Author URL: $author_url"
+
+    plugin_text_domain="$plugin_slug"
+    plugin_class_prefix=$(echo "$plugin_slug" | sed 's/-/_/g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1' | sed 's/ /_/g')
+    plugin_function_prefix=$(echo "$plugin_slug" | sed 's/-/_/g' | tr '[:upper:]' '[:lower:]')
+    plugin_const_prefix=$(echo "$plugin_slug" | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:lower:]' '[:upper:]')
+
+    # Prefer CSTN generator repo (interactive rename) over autonomous generation
+    if ensure_cstn_generator_repo && [ "$DRY_RUN" = false ]; then
+        GEN_DIR="$PLUGIN_DIR/.cstn-generator"
+
+        (cd "$GEN_DIR" && node bin/rename-plugin.js \
+            --slug "$plugin_slug" \
+            --name "$plugin_name" \
+            --text-domain "$plugin_text_domain" \
+            --class-prefix "$plugin_class_prefix" \
+            --function-prefix "$plugin_function_prefix" \
+            --const-prefix "$plugin_const_prefix" \
+            --author "$author_name" \
+            --author-uri "$author_url" \
+            --plugin-uri "$author_url" \
+            --description "$plugin_desc") || true
+
+        echo
+        echo "📦 Copying scaffold into plugin root..."
+        rsync -a \
+            --ignore-existing \
+            --exclude '.git' \
+            --exclude '.codex-backups' \
+            --exclude '.codex_index.json' \
+            --exclude '.codex_run_meta.json' \
+            --exclude '.codex_tasks.csv' \
+            "$GEN_DIR/" "$PLUGIN_DIR/" 2>/dev/null || true
+
+        rm -rf "$GEN_DIR"
+        echo "✅ Scaffold copied into $PLUGIN_DIR"
+        echo
+    else
+        echo "⚠️  CSTN generator not available."
+        echo "    Repo: $CSTN_GENERATOR_REPO"
+        echo "    Senior Developer creating WPPB style structure autonomously..."
+        echo
+
+        decision="$(senior_decide "create_scaffold")"
+        if [ "$decision" = "yes" ] && [ "$DRY_RUN" = false ]; then
+            generate_wppb_scaffold_autonomous
+        fi
+    fi
+fi
+
+# 1.5 Initialize git if not present
+if [ ! -d "$PLUGIN_DIR/.git" ]; then
+    echo "📦 Initializing git repository..."
+    if [ "$DRY_RUN" = false ]; then
+        git init
+        git add -A
+        git commit -m "Initial scaffold (factory baseline)" 2>/dev/null || true
+    fi
+else
+    echo "📦 Git repository already exists, skipping init."
+fi
+
+
+# 3. Ensure package.json exists with required scripts
+if [ -f "$PLUGIN_DIR/package.json" ]; then
+    echo "📦 package.json found, verifying scripts..."
+    if command -v python3 >/dev/null 2>&1; then
+        PKG_PATH="$PLUGIN_DIR/package.json" python3 - <<'PY'
+import json, os, sys
+pkg_path = os.environ["PKG_PATH"]
+with open(pkg_path, "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+scripts = data.get("scripts", {})
+scripts["test"] = "docker compose up --abort-on-container-exit --exit-code-from tests tests"
+scripts["test:local"] = "phpunit"
+scripts["fix"] = 'phpcbf -d memory_limit=512M -d error_reporting="E_ALL&~E_DEPRECATED" --standard=phpcs.xml.dist --extensions=php .'
+scripts["check"] = 'phpcs -d memory_limit=512M -d error_reporting="E_ALL&~E_DEPRECATED" --standard=phpcs.xml.dist --extensions=php . > check.txt'
+scripts["phpmd"] = "phpmd . text phpmd.xml --exclude vendor,node_modules,.codex-backups > phpmd.txt"
+scripts["dist"] = 'ZIP_NAME="${npm_package_name:-plugin}.zip"; rm -f "$ZIP_NAME" && zip -r "$ZIP_NAME" . -x "*/.*" "*.log" "*.zip" "node_modules/*" "vendor/*" "dist/*" "build/*" ".git/*" ".github/*" ".wp-core/*" ".wp-tests/*" ".cstn-generator/*" ".codex-backups/*" "check.txt" "phpmd.txt" "plugin-error.log" "AGENTS.md" "SPEC.md" "MEMORY.md" "PLAN.md" "PLAYBOOK.md" "DESIGN_SYSTEM.md" "UI_AUDIT.md" "APP_FLOW.md" "FRONTEND_GUIDELINES.md" "DESIGN_LESSONS.md" "package.json" "package-lock.json" "composer.json" "phpmd.xml" ".codex_index.json" ".codex_run_meta.json" ".codex_tasks.csv"'
+data["scripts"] = scripts
+with open(pkg_path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\\n")
+PY
+    else
+        if ! grep -q '"fix"' "$PLUGIN_DIR/package.json" || ! grep -q '"check"' "$PLUGIN_DIR/package.json"; then
+            echo "⚠️  package.json missing required 'fix' or 'check' scripts."
+            echo "    Please ensure these scripts are defined per AGENTS.md."
+        fi
+    fi
+else
+    echo "📦 No package.json found, creating one with standard scripts."
+    [ "$DRY_RUN" = false ] && cat > "$PLUGIN_DIR/package.json" <<EOF
+{
+  "name": "$PLUGIN_SLUG",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "docker compose up --abort-on-container-exit --exit-code-from tests tests",
+    "test:local": "phpunit",
+    "fix": "phpcbf -d memory_limit=512M -d error_reporting=\\"E_ALL&~E_DEPRECATED\\" --standard=phpcs.xml.dist --extensions=php .",
+    "check": "phpcs -d memory_limit=512M -d error_reporting=\\"E_ALL&~E_DEPRECATED\\" --standard=phpcs.xml.dist --extensions=php . > check.txt",
+    "phpmd": "phpmd . text phpmd.xml --exclude vendor,node_modules,.codex-backups > phpmd.txt",
+    "dist": "ZIP_NAME=\\"\\${npm_package_name:-plugin}.zip\\"; rm -f \\"\\$ZIP_NAME\\" && zip -r \\"\\$ZIP_NAME\\" . -x \\"*/.*\\" \\"*.log\\" \\"*.zip\\" \\"node_modules/*\\" \\"vendor/*\\" \\"dist/*\\" \\"build/*\\" \\".git/*\\" \\".github/*\\" \\".wp-core/*\\" \\".wp-tests/*\\" \\".cstn-generator/*\\" \\".codex-backups/*\\" \\"check.txt\\" \\"phpmd.txt\\" \\"plugin-error.log\\" \\"AGENTS.md\\" \\"SPEC.md\\" \\"MEMORY.md\\" \\"PLAN.md\\" \\"PLAYBOOK.md\\" \\"DESIGN_SYSTEM.md\\" \\"UI_AUDIT.md\\" \\"APP_FLOW.md\\" \\"FRONTEND_GUIDELINES.md\\" \\"DESIGN_LESSONS.md\\" \\"package.json\\" \\"package-lock.json\\" \\"composer.json\\" \\"phpmd.xml\\" \\".codex_index.json\\" \\".codex_run_meta.json\\" \\".codex_tasks.csv\\"",
+    "plugin-check": "wp plugin check .",
+    "update-wpcs": "composer global require wp-coding-standards/wpcs --update-with-all-dependencies",
+    "update-phpcs": "composer global require squizlabs/php_codesniffer --update-with-all-dependencies",
+    "refresh-phpcs": "phpcs --clear-cache && phpcs --config-set installed_paths ~/.composer/vendor/wp-coding-standards/wpcs"
+  }
+}
+EOF
+fi
+
+# 3.1 Ensure phpcs.xml.dist exists
+if [ -f "$PLUGIN_DIR/phpcs.xml.dist" ]; then
+    echo "🧹 phpcs.xml.dist found"
+else
+    echo "🧹 No phpcs.xml.dist found, creating a default."
+    [ "$DRY_RUN" = false ] && cat > "$PLUGIN_DIR/phpcs.xml.dist" <<'EOF'
+<?xml version="1.0"?>
+<ruleset name="Plugin Standard">
+	<description>WordPress Coding Standards.</description>
+
+	<rule ref="WordPress-Core" />
+	<rule ref="WordPress-Docs" />
+	<rule ref="WordPress-Extra" />
+
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/.codex-backups/*</exclude-pattern>
+	<exclude-pattern>*/.wp-core/*</exclude-pattern>
+	<exclude-pattern>*/.wp-tests/*</exclude-pattern>
+	<exclude-pattern>*/languages/*</exclude-pattern>
+	<exclude-pattern>*/dist/*</exclude-pattern>
+	<exclude-pattern>*/build/*</exclude-pattern>
+</ruleset>
+EOF
+fi
+
+# 3.2 Ensure phpunit.xml.dist exists
+if [ -f "$PLUGIN_DIR/phpunit.xml.dist" ]; then
+    echo "🧪 phpunit.xml.dist found"
+else
+    echo "🧪 No phpunit.xml.dist found, creating a default."
+    [ "$DRY_RUN" = false ] && cat > "$PLUGIN_DIR/phpunit.xml.dist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true">
+	<testsuites>
+		<testsuite name="Plugin Tests">
+			<directory prefix="test-" suffix=".php">tests</directory>
+		</testsuite>
+	</testsuites>
+	<php>
+		<ini name="error_reporting" value="-1"/>
+		<ini name="display_errors" value="1"/>
+	</php>
+</phpunit>
+EOF
+fi
+
+# 3.3 Ensure PHPUnit bootstrap exists
+if [ -f "$PLUGIN_DIR/tests/bootstrap.php" ]; then
+    echo "🧪 tests/bootstrap.php found"
+else
+    echo "🧪 No tests/bootstrap.php found, creating a default."
+    [ "$DRY_RUN" = false ] && mkdir -p "$PLUGIN_DIR/tests"
+    [ "$DRY_RUN" = false ] && cat > "$PLUGIN_DIR/tests/bootstrap.php" <<'EOF'
+<?php
+/**
+ * PHPUnit bootstrap file.
+ *
+ * @package Plugin
+ */
+
+if ( ! defined( 'ABSPATH' ) && ! getenv( 'WP_TESTS_DIR' ) && ! is_dir( dirname( __DIR__ ) . '/.wp-tests' ) ) {
+	exit;
+}
+
+$_tests_dir = getenv( 'WP_TESTS_DIR' );
+
+if ( ! $_tests_dir ) {
+	$_tests_dir = dirname( __DIR__ ) . '/.wp-tests';
+}
+
+if ( ! defined( 'WP_TESTS_DIR' ) ) {
+	define( 'WP_TESTS_DIR', $_tests_dir );
+}
+
+require_once WP_TESTS_DIR . '/includes/functions.php';
+
+/**
+ * Load the plugin for integration tests.
+ */
+function plugin_load_for_tests() {
+	$plugin_file = glob( dirname( __DIR__ ) . '/*.php' );
+	if ( ! empty( $plugin_file[0] ) ) {
+		require $plugin_file[0];
+	}
+}
+
+tests_add_filter( 'muplugins_loaded', 'plugin_load_for_tests' );
+
+require_once WP_TESTS_DIR . '/includes/bootstrap.php';
+EOF
+fi
+
+# 4. Ensure phpmd.xml exists
+if [ -f "$PLUGIN_DIR/phpmd.xml" ]; then
+    echo "🧪 phpmd.xml found"
+else
+    echo "🧪 No phpmd.xml found, creating a simple default."
+    [ "$DRY_RUN" = false ] && cat > "$PLUGIN_DIR/phpmd.xml" <<'EOF'
+<?xml version="1.0"?>
+<ruleset name="Default PHPMD rules"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 https://pmd.github.io/pmd-6.10.0/ruleset_xml_schema.xsd"
+>
+    <description>Default ruleset for WordPress plugin development.</description>
+
+    <rule ref="rulesets/codesize.xml" />
+    <rule ref="rulesets/unusedcode.xml" />
+    <rule ref="rulesets/naming.xml" />
+</ruleset>
+EOF
+fi
+
+# 5. Create a plugin error log file for Codex and the plugin
+if [ ! -f "$LOG_FILE" ]; then
+    echo "🧾 Creating plugin error log file at $LOG_FILE"
+    [ "$DRY_RUN" = false ] && touch "$LOG_FILE"
+else
+    echo "🧾 Plugin error log file exists: $LOG_FILE"
+fi
+
+# 6. Build Codex instruction message
+if [ -n "${CODEX_MSG:-}" ]; then
+    # If you pass args to this script, they override the default instruction.
+    : # CODEX_MSG already set from arguments
+else
+    # Default: fully autonomous "make the plugin match the spec" instruction.
+    CODEX_MSG=$'Read AGENTS.md and SPEC.md.\n\n\
+In this run, your job is to autonomously implement or update the WordPress plugin in this repository so that it fully matches SPEC.md and follows all architecture and coding rules from AGENTS.md.\n\n\
+Your goal in YOLO mode is to get this repository into a state where it is WPCS compliant, has a complete WPPB style structure, has phpunit wired, has logging wired, and is ready for active feature development.\n\n\
+When you notice missing or incomplete elements (for example ABSPATH guards, PHPUnit config, tests/, phpcs.xml, package.json scripts, or a Logger), you must create and wire them yourself. Do NOT ask the user to do these things and do NOT list them as suggested next steps.\n\n\
+Use check.txt produced by npm run check as your guide for coding standard cleanup and keep iterating toward a clean result.\n\n\
+Very important: Do NOT ask what to update and do NOT output a list of things the user \"may want\" to do. Instead, apply the next concrete coding steps directly to the codebase.'
+fi
+
+echo
+echo "🧾 Codex instruction:"
+echo "$CODEX_MSG"
+echo
+
+if [ "$DRY_RUN" = true ]; then
+    echo "🔍 DRY RUN: Would run Codex YOLO with above instruction"
+    echo "   Skipping actual Codex execution..."
+else
+    echo "🤖 Running Codex YOLO..."
+    echo
+
+    PASS=0
+    if is_truthy "$USE_SUBAGENTS"; then
+        run_subagent_pipeline
+        PASS="$SUBAGENT_ROUNDS"
+    else
+        RAN_CODEX_LOOP=true
+        PASS=1
+        CODEX_EXIT=0
+
+        while [ "$PASS" -le "$MAX_ITERATIONS" ]; do
+            log "🔁 Codex pass $PASS of $MAX_ITERATIONS"
+
+            EXTRA_CONTEXT="$(build_codex_context || true)"
+
+            CODEX_PASS_MSG="$CODEX_MSG"$'\n\n---\nAdditional context from last pass:\n'"$EXTRA_CONTEXT"$'\n---\n'
+
+            set +e
+            run_codex_unattended "$PLUGIN_DIR" "$CODEX_PASS_MSG"
+            CODEX_EXIT=$?
+            set -e
+
+            if [ "$CODEX_EXIT" -ne 0 ]; then
+                log "⚠️ Codex exit code $CODEX_EXIT on pass $PASS (continuing)"
+            fi
+
+            # Run fix/check after each pass.
+            LAST_CHECK_OK=true
+            if [ -f "$PLUGIN_DIR/package.json" ]; then
+                npm run fix || true
+                CHECK_EXIT=0
+                npm run check || CHECK_EXIT=$?
+                if [ "$CHECK_EXIT" -ne 0 ]; then
+                    LAST_CHECK_OK=false
+                    log "⚠️ npm run check failed on pass $PASS (exit $CHECK_EXIT). Skipping clean short-circuit."
+                fi
+            fi
+
+            DOCKER_TEST_OK=true
+            if [ "$DRY_RUN" = false ] && [ "$RUN_DOCKER_TESTS_EACH_PASS" = "true" ] && [ "$RUN_DOCKER_TESTS" = "true" ]; then
+                if has_docker; then
+                    set +e
+                    docker_tests
+                    DOCKER_TEST_EXIT=$?
+                    set -e
+
+                    if [ "$DOCKER_TEST_EXIT" -ne 0 ]; then
+                        DOCKER_TEST_OK=false
+                        log "⚠️ Docker tests failed on pass $PASS (exit $DOCKER_TEST_EXIT). Continuing."
+                    else
+                        log "✅ Docker tests passed on pass $PASS."
+                    fi
+                else
+                    DOCKER_TEST_OK=false
+                    log "⚠️ Docker not available. Cannot verify PHPUnit on pass $PASS."
+                fi
+            fi
+
+            # Stop early if clean.
+            if [ "$LAST_CHECK_OK" = true ] && check_is_clean && [ "$DOCKER_TEST_OK" = true ]; then
+                log "✅ Clean state achieved (PHPCS + PHPUnit). Stopping early."
+                CLEAN_BASELINE=true
+                break
+            fi
+
+            PASS=$((PASS + 1))
+        done
+    fi
+
+    echo
+    echo "✅ Codex loop finished after $PASS pass(es)."
+    display_check_summary
+    echo
+
+    if [ "$CODEX_EXIT" -eq 0 ]; then
+        echo "✅ Last Codex exit code: 0"
+    else
+        echo "⚠️  Last Codex exit code: $CODEX_EXIT"
+    fi
+fi
+
+# 7. Run npm fix and check (optional final pass)
+if [ "$RUN_FINAL_CHECK" = "true" ] && command -v npm >/dev/null 2>&1 && [ -f "$PLUGIN_DIR/package.json" ] && [ "$DRY_RUN" = false ]; then
+    echo
+    echo "🧹 Running npm run fix"
+    if ! npm run fix; then
+        echo "⚠️  npm run fix reported issues."
+    fi
+
+    echo
+    echo "🔎 Running npm run check (output to check.txt)"
+    CHECK_EXIT=0
+    if ! npm run check; then
+        CHECK_EXIT=$?
+        echo "⚠️  npm run check reported coding standard issues. See check.txt."
+    else
+        echo "✅ npm run check completed. See check.txt for details."
+    fi
+    
+    # Display summary
+    display_check_summary
+    if [ "$CHECK_EXIT" -eq 0 ] && check_is_clean; then
+        CLEAN_BASELINE=true
+    fi
+else
+    if [ "$DRY_RUN" = true ]; then
+        echo
+        echo "🔍 DRY RUN: Would run npm fix and check"
+    elif [ "$RUN_FINAL_CHECK" != "true" ] && [ "$RAN_CODEX_LOOP" = true ]; then
+        echo
+        echo "ℹ️  Final npm fix/check skipped (already ran per-pass)."
+    else
+        echo
+        echo "⚠️  npm or package.json not available, skipping fix/check."
+    fi
+fi
+
+# 7.5 Run docker tests after Codex loop and npm checks
+if [ "$DRY_RUN" = false ] && [ "$RUN_DOCKER_TESTS" = "true" ]; then
+    if has_docker; then
+        set +e
+        docker_tests
+        DOCKER_TEST_EXIT=$?
+        set -e
+
+        if [ "$DOCKER_TEST_EXIT" -ne 0 ]; then
+            log "⚠️ Docker tests failed after Codex (exit $DOCKER_TEST_EXIT). Continuing."
+        else
+            log "✅ Docker tests passed after Codex."
+        fi
+    else
+        log "ℹ️ Docker not available. Skipping docker tests."
+    fi
+fi
+
+# 8. Stage all changes in git, if this is a git repo
+if [ -d "$PLUGIN_DIR/.git" ] && [ "$DRY_RUN" = false ]; then
+    echo
+    echo "📚 Staging changes (post Codex)..."
+    git add -A
+    
+    # Create descriptive commit if there are changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        error_count=$(count_check_matches "ERROR")
+        warn_count=$(count_check_matches "WARNING")
+        
+        git commit -m "chore: codex auto-update [$(date +'%Y-%m-%d %H:%M')]
+
+- Applied WPCS fixes
+- Updated structure per AGENTS.md
+- Errors: $error_count | Warnings: $warn_count" 2>/dev/null || true
+        
+        echo "✅ Changes committed"
+    else
+        echo "📚 No changes to commit"
+    fi
+    
+    git status -sb
+else
+    if [ "$DRY_RUN" = true ]; then
+        echo
+        echo "🔍 DRY RUN: Would stage and commit changes"
+    else
+        echo
+        echo "ℹ️  No git repository detected. Skipping git add."
+    fi
+fi
+
+if [ "$DRY_RUN" = false ] && is_truthy "$KEEP_CODEX_OPEN"; then
+    echo
+    echo "🟢 Opening Codex for next steps..."
+
+    # Persist learning artifacts before handing off to interactive Codex.
+    append_learning_recap_if_needed "${CODEX_EXIT:-0}"
+
+    # Hand control to Codex so this script does not continue and retrigger wrappers.
+    trap - EXIT INT TERM
+    if is_truthy "$CODEX_RESUME_LAST" && codex resume --help >/dev/null 2>&1; then
+        exec codex resume --last --sandbox "$CODEX_SANDBOX_MODE" -a on-request -C "$PLUGIN_DIR"
+    fi
+    exec codex --sandbox "$CODEX_SANDBOX_MODE" -a on-request --cd "$PLUGIN_DIR"
+fi
+
+echo
+echo "✨ Done. WPPB (if used) flattened, git initialized, Codex run, check.txt and plugin-error.log ready for the next round."

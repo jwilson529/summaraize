@@ -1,0 +1,15 @@
+{
+    "name": "jameswilson/summaraize",
+    "autoload": {
+        "psr-4": {
+            "Jameswilson\\Summaraize\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "James Wilson",
+            "email": "jwilson529@hotmail.com"
+        }
+    ],
+    "require": {}
+}

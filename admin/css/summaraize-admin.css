@@ -1,0 +1,402 @@
+/* General Styles for the Settings Page */
+.settings_page_summaraize-settings .form-table {
+    width: 100%;
+    max-width: 800px;
+    margin-top: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.settings_page_summaraize-settings .form-table th {
+    width: 25%;
+    text-align: left;
+    padding: 10px;
+    vertical-align: top;
+    font-weight: 600;
+    background-color: #f9f9f9;
+}
+
+.settings_page_summaraize-settings .form-table td {
+    padding: 10px;
+    vertical-align: top;
+}
+
+.settings_page_summaraize-settings .form-table .description {
+    margin-top: 5px;
+    color: #666;
+}
+
+.settings_page_summaraize-settings .form-table input[type="text"],
+.settings_page_summaraize-settings .form-table input[type="password"],
+.settings_page_summaraize-settings .form-table select {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Selected Model Wrapper Styles */
+.summaraize-selected-model-wrapper {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
+.summaraize-selected-model-description {
+    font-size: 14px;
+    color: #666;
+}
+
+.summaraize-selected-model-description a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.summaraize-selected-model-description a:hover {
+    text-decoration: underline;
+}
+
+/* Toggle Switch Styles */
+.settings_page_summaraize-settings .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.settings_page_summaraize-settings .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.settings_page_summaraize-settings .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.settings_page_summaraize-settings .slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.settings_page_summaraize-settings input:checked + .slider {
+    background-color: #0073aa;
+}
+
+.settings_page_summaraize-settings input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.settings_page_summaraize-settings .post-type-label {
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+/* Container for spacing */
+.summaraize-toggle-wrapper {
+    margin-bottom: 10px;
+}
+
+
+/* Metabox Styles */
+#summaraize_meta_box {
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+#summaraize_meta_box .postbox-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+#summaraize_meta_box .inside {
+    padding: 15px;
+}
+
+#generate-summaraize-button {
+    background: #0073aa;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.3s;
+}
+
+#generate-summaraize-button:hover {
+    background: #005177;
+}
+
+#generate-summaraize-button .summaraize-spinner {
+    display: none; /* Initially hidden */
+    width: 20px;
+    height: 20px;
+    border: 2px solid #fff;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    margin-left: 10px;
+    animation: summaraize-spin 1s linear infinite;
+}
+
+/* Notification Styles */
+.summaraize-notification {
+    position: fixed;
+    top: 40px;
+    right: 20px;
+    z-index: 1000;
+    background-color: #0073aa;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: none;
+    font-size: 14px;
+}
+
+.summaraize-notification.error {
+    background-color: #dc3232;
+}
+
+/* Hide the Save Changes Button */
+.summaraize-settings-form .submit {
+    display: none;
+}
+
+/* Loading Icon Styles */
+@keyframes summaraize-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#summaraize_override_options {
+    margin-bottom: 20px;
+}
+
+#summaraize_override_settings {
+    margin: 0;
+    padding: 0;
+    vertical-align: middle;
+}
+
+#summaraize_override_settings + label {
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+p.summaraize-settings {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.summaraize-alert {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.settings_page_summaraize-settings .summaraize-alert h2 {
+    margin-top: 0;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+#summaraize_override_options {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+#summaraize_override_options p {
+    margin-bottom: 15px;
+}
+
+#summaraize_override_options label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+#summaraize_override_options select,
+#summaraize_override_options input[type="text"],
+#summaraize_override_options input[type="color"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    margin-bottom: 5px;
+}
+
+#summaraize_override_options .summaraize-description {
+    font-style: italic;
+    color: #666;
+    margin-top: -10px;
+    margin-bottom: 10px;
+}
+
+#summaraize_override_options .summaraize-button-style-wrapper,
+#summaraize_override_options .summaraize-button-color-wrapper {
+    margin-top: 15px;
+}
+
+#summaraize_override_options optgroup {
+    font-weight: bold;
+    color: #0073aa;
+}
+
+#summaraize_override_options .summaraize-button-style-description,
+#summaraize_override_options .summaraize-button-color-description {
+    margin-top: 5px;
+}
+
+.settings_page_summaraize-settings .notice:not(:first-of-type) {
+  display: none;
+}
+
+.summaraize-input-container {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.summaraize-input-container label {
+    flex: 0 0 auto;
+    margin-right: 10px;
+}
+
+.summaraize-input-container input {
+    flex: 1;
+    width: 100%;
+}
+
+.summaraize-input-container .remove-point {
+    flex: 0 0 auto;
+    margin-left: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0;
+    line-height: 1;
+    color: #d63638; /* Optional */
+}
+
+.summaraize-input-container .remove-point:hover {
+    color: #ff0000; /* Optional hover color */
+}
+
+/* Style the placeholder text */
+.summaraize-input-container  input::placeholder {
+    color: #b3b3b3;
+    opacity: 1;
+}
+
+.summaraize-spinner-container {
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 5px;
+    border-radius: 4px;
+    transition: opacity 0.3s;
+}
+
+.summaraize-spinner {
+    margin-right: 10px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ccc;
+    border-top: 2px solid #000;
+    border-radius: 50%;
+    animation: summaraize-spin 1s linear infinite;
+}
+
+.summaraize-spinner-message {
+    font-size: 14px;
+    color: #000;
+}
+
+@keyframes summaraize-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Modal Overlay */
+.summaraize-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Modal Content Box */
+.summaraize-modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+    position: relative;
+}
+
+/* Close Button */
+.summaraize-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    cursor: pointer;
+}
+
+.summaraize-close:hover,
+.summaraize-close:focus {
+    color: black;
+    text-decoration: none;
+}

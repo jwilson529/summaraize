@@ -1,0 +1,261 @@
+/* summaraize-public.css */
+
+/* Light mode styles */
+.summaraize.light {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 5px;
+}
+
+.summaraize.light h2 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: #333;
+    font-weight: bold;
+}
+
+.summaraize.light ol {
+    list-style-type: none;
+    counter-reset: item;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.summaraize.light ol li {
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #555;
+    position: relative;
+    padding-left: 30px;
+}
+
+.summaraize.light ol li:before {
+    content: counter(item) ".";
+    counter-increment: item;
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #a9a9a9;
+    font-weight: bold;
+}
+
+.summaraize.light ol li:hover {
+    color: #000;
+}
+
+/* Dark mode styles */
+.summaraize.dark {
+    background-color: #333;
+    border: 1px solid #555;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 5px;
+    color: #fff;
+}
+
+.summaraize.dark h2 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: #fff;
+    font-weight: bold;
+}
+
+.summaraize.dark ol {
+    list-style-type: none;
+    counter-reset: item;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.summaraize.dark ol li {
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #ddd;
+    position: relative;
+    padding-left: 30px;
+}
+
+.summaraize.dark ol li:before {
+    content: counter(item) ".";
+    counter-increment: item;
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #a9a9a9;
+    font-weight: bold;
+}
+
+.summaraize.dark ol li:hover {
+    color: #fff;
+}
+
+.summaraize-popup-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8); /* Darker background */
+    backdrop-filter: blur(5px); /* Blur effect */
+}
+
+.summaraize-popup-content {
+    color: #000;
+    background-color: #fff;
+    margin: 10% auto; /* Adjusted margin for better centering */
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1001;
+    animation: slide-down 0.5s ease; /* Slide down effect */
+}
+
+@keyframes slide-down {
+    from {
+        transform: translateY(-50%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.summaraize-popup-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    transition: color 0.3s ease;
+}
+
+.summaraize-popup-close:hover {
+    color: #000;
+}
+
+/* General button styles */
+.summaraize-popup-btn {
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+/* Flat button style */
+.summaraize-popup-btn.flat {
+    box-shadow: none;
+}
+
+/* Rounded button style */
+.summaraize-popup-btn.rounded {
+    border-radius: 25px;
+}
+
+/* Angled button style */
+.summaraize-popup-btn.angled {
+    border-top-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+
+/* Apple button style */
+.summaraize-popup-btn.apple {
+    background: linear-gradient(to bottom, #f9f9f9, #e3e3e3);
+    border: 1px solid #d5d5d5;
+    border-radius: 10px;
+    color: #333;
+    text-shadow: 0 1px rgba(255, 255, 255, 0.9);
+}
+
+/* Google button style */
+.summaraize-popup-btn.google {
+    background: linear-gradient(to bottom, #4285f4, #2a56c6);
+    border-radius: 2px;
+}
+
+/* Bubbly button style */
+.summaraize-popup-btn.bubbly {
+/*    background: linear-gradient(to bottom, #ff7f50, #ff6347);*/
+    border-radius: 50px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Material button style */
+.summaraize-popup-btn.material {
+    background: #6200ea;
+    color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Windows button style */
+.summaraize-popup-btn.windows {
+    background: #0078d7;
+    color: #fff;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* Neumorphism button style */
+.summaraize-popup-btn.neumorphism {
+    background: #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 7px 7px 15px #bebebe, -7px -7px 15px #ffffff;
+    color: #333;
+}
+
+/* 3D button style */
+.summaraize-popup-btn.3d {
+    background: linear-gradient(to bottom, #ececec, #d1d1d1);
+    border: 1px solid #a1a1a1;
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    color: #333;
+}
+
+/* Additional styles for hover and active states */
+.summaraize-popup-btn:hover {
+    transform: scale(1.05);
+}
+
+.summaraize-popup-btn:active {
+    transform: scale(0.95);
+}
+
+/* Loading Icon Styles */
+#loading-icon {
+    display: none;
+    font-size: 16px;
+    color: #0073aa;
+    text-align: center;
+    margin-top: 20px;
+}
+
+#loading-icon .spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

@@ -1,0 +1,49 @@
+# GENERATED_BY_CODEX_YOLO_DOCKER_COMPOSE_V3
+services:
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: wp
+      MYSQL_ROOT_PASSWORD: root
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  wordpress:
+    image: wordpress:php8.2-apache
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: wp
+      WORDPRESS_DB_NAME: wordpress
+    ports:
+      - "8088:80"
+    volumes:
+      - ./:/var/www/html/wp-content/plugins/current-plugin:rw
+
+  tests:
+    image: php:8.2-cli
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /work
+    volumes:
+      - ./:/work:rw
+    environment:
+      WP_TESTS_DB_HOST: db
+      WP_TESTS_DB_NAME: wordpress_test
+      WP_TESTS_DB_USER: root
+      WP_TESTS_DB_PASS: root
+      WP_VERSION: latest
+      PHPUNIT_VERSION: 9.6.20
+    command: ["bash", "-lc", "bash ./bin/docker-tests.sh"]

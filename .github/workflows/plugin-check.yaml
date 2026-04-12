@@ -1,0 +1,78 @@
+name: Build & Deploy Summaraize
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'releases/*'
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+
+      - name: Install WPCS
+        run: |
+          composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer global require wp-coding-standards/wpcs dealerdirect/phpcodesniffer-composer-installer
+
+      - name: Run WPCS
+        run: |
+          ~/.composer/vendor/bin/phpcs --standard=WordPress . --ignore=vendor,node_modules
+        continue-on-error: true
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Checkout code (full history & tags)
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js & PHP
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+
+      - name: Install dependencies (optional, skip if unused)
+        run: |
+          composer install --no-dev --optimize-autoloader || true
+          npm ci || true
+
+      - name: Build ZIP
+        run: npm run dist
+
+      - name: Extract ZIP to dist/
+        run: |
+          rm -rf dist
+          mkdir dist
+          unzip summaraize.zip -d dist
+
+      - name: Deploy to WP.org SVN
+        uses: 10up/action-wordpress-plugin-deploy@2.3.0
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
+          SLUG:       summaraize
+          BUILD_DIR:  dist
+          ASSETS_DIR: assets

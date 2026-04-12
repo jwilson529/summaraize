@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wpml-config>
+    <admin-texts>
+        <key name="summaraize_options">
+            <key name="summaraize_widget_title"/> <!-- Translates the widget title -->
+            <key name="summaraize_prompt_type"/> <!-- Translates the prompt type (e.g., dropdown options) -->
+            <key name="summaraize_list_type"/> <!-- Translates list type (e.g., ordered/unordered) -->
+            <key name="summaraize_display_position"/> <!-- Translates display type (popup/inline) -->
+            <key name="summaraize_ai_model"/> <!-- Translates AI model (e.g., GPT-4 vs GPT-3.5) -->
+        </key>
+    </admin-texts>
+</wpml-config>

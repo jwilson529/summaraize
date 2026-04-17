@@ -21,19 +21,43 @@
          * @returns {{title: *, content: *, tags: *}}
          */
         function getEditorData() {
-            var title, content, tags;
-            if ($('#editor').length) {
+            var title = '';
+            var content = '';
+            var tags = '';
+            var editorStore;
+            var editorTags;
+            var classicEditor;
+
+            if ($('#editor').length && 'undefined' !== typeof wp && wp.data && wp.data.select) {
                 // Gutenberg
-                title = wp.data.select('core/editor').getEditedPostAttribute('title');
-                content = wp.data.select('core/editor').getEditedPostContent();
-                tags = wp.data.select('core/editor').getEditedPostAttribute('tags').join(', ');
+                editorStore = wp.data.select('core/editor');
+                title = editorStore.getEditedPostAttribute('title') || '';
+                content = editorStore.getEditedPostContent() || '';
+                editorTags = editorStore.getEditedPostAttribute('tags');
+
+                if (Array.isArray(editorTags)) {
+                    tags = editorTags.join(', ');
+                } else if ('string' === typeof editorTags) {
+                    tags = editorTags;
+                }
             } else {
                 // Classic editor
-                title = $('input#title').val();
-                content = $('textarea#content').val();
-                tags = $('input[name="tax_input[post_tag]"]').val();
+                title = $('input#title').val() || '';
+                tags = $('input[name="tax_input[post_tag]"]').val() || '';
+
+                if ('undefined' !== typeof tinymce && 'function' === typeof tinymce.get) {
+                    classicEditor = tinymce.get('content');
+                    if (classicEditor && 'function' === typeof classicEditor.getContent) {
+                        content = classicEditor.getContent() || '';
+                    }
+                }
+
+                if (!content) {
+                    content = $('textarea#content').val() || '';
+                }
             }
-            return { title, content, tags };
+
+            return { title: title, content: content, tags: tags };
         }
 
 

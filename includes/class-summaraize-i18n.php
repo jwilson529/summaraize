@@ -34,11 +34,9 @@ class Summaraize_I18n {
 	 * @since    1.0.0
 	 */
 	public function load_plugin_textdomain() {
-
-		load_plugin_textdomain(
-			'summaraize',
-			false,
-			dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/languages/'
-		);
+		/*
+		 * WordPress.org language packs are loaded automatically for plugin slugs,
+		 * so this hook remains as a compatibility no-op.
+		 */
 	}
 }

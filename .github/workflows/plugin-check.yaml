@@ -1,4 +1,4 @@
-name: Build & Deploy Summaraize
+name: CI and Release
 
 on:
   pull_request:
@@ -8,16 +8,18 @@ on:
       - 'releases/*'
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
-  test:
+  validate:
+    name: Validate plugin
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -25,54 +27,64 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.0'
+          coverage: none
 
-      - name: Install WPCS
-        run: |
-          composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-          composer global require wp-coding-standards/wpcs dealerdirect/phpcodesniffer-composer-installer
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Run WPCS
-        run: |
-          ~/.composer/vendor/bin/phpcs --standard=WordPress . --ignore=vendor,node_modules
-        continue-on-error: true
+      - name: Run PHPCS
+        run: npm run check
+
+      - name: Run PHPUnit
+        run: npm test
+
+      - name: Build release zip
+        run: npm run dist
+
+      - name: Upload release zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: summaraize-release-zip
+          path: dist/summaraize.zip
+          if-no-files-found: error
+          retention-days: 7
 
   deploy:
-    needs: test
+    name: Deploy to WordPress.org
+    needs: validate
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
+    permissions:
+      contents: write
     steps:
       - name: Checkout code (full history & tags)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js & PHP
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.0'
-
-      - name: Install dependencies (optional, skip if unused)
-        run: |
-          composer install --no-dev --optimize-autoloader || true
-          npm ci || true
 
       - name: Build ZIP
         run: npm run dist
 
-      - name: Extract ZIP to dist/
-        run: |
-          rm -rf dist
-          mkdir dist
-          unzip summaraize.zip -d dist
-
       - name: Deploy to WP.org SVN
-        uses: 10up/action-wordpress-plugin-deploy@2.3.0
+        id: wporg_deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          generate-zip: true
         env:
           SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
-          SLUG:       summaraize
-          BUILD_DIR:  dist
+          SLUG: summaraize
+          BUILD_DIR: dist/summaraize
           ASSETS_DIR: assets
+
+      - name: Attach release zip to GitHub release
+        if: steps.wporg_deploy.outputs.zip-path != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.wporg_deploy.outputs.zip-path }}
+          overwrite_files: true

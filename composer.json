@@ -1,15 +1,26 @@
 {
     "name": "jameswilson/summaraize",
-    "autoload": {
-        "psr-4": {
-            "Jameswilson\\Summaraize\\": "src/"
-        }
-    },
+    "description": "Free bring-your-own-key WordPress summaries with OpenAI or Google Gemini.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
     "authors": [
         {
             "name": "James Wilson",
             "email": "jwilson529@hotmail.com"
         }
     ],
-    "require": {}
+    "require": {},
+    "require-dev": {
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.1",
+        "phpcompatibility/phpcompatibility-wp": "^2.1",
+        "phpmd/phpmd": "^2.15",
+        "phpunit/phpunit": "^9.6",
+        "wp-coding-standards/wpcs": "^3.1",
+        "yoast/phpunit-polyfills": "^3.1"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
 }

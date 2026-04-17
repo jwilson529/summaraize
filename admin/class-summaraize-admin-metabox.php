@@ -8,6 +8,8 @@
  * @package Summaraize
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class Summaraize_Admin_Metabox
  */
@@ -180,6 +182,7 @@ class Summaraize_Admin_Metabox {
 	        <div class="summaraize-modal-content">
 	            <span class="summaraize-close" aria-label="Close Modal">&times;</span>
 	            <div id="summaraize-modal-message" tabindex="0"></div>
+	            <pre id="summaraize-modal-debug" class="summaraize-modal-debug" hidden></pre>
 	        </div>
 	    </div>';
 	}

@@ -12,10 +12,10 @@
  * @package           Summaraize
  *
  * @wordpress-plugin
- * Plugin Name:       SummarAIze – Automatically create TL;DRs for your posts
+ * Plugin Name:       SummarAIze
  * Plugin URI:        https://github.com/jwilson529/summaraize
- * Description:       Bring your own OpenAI API key to instantly distill your posts into 5 key takeaways, boosting reader engagement and making your content more digestible at a glance.
- * Version:           1.2.6
+ * Description:       Free bring-your-own-key AI summaries for posts and pages using OpenAI or Google Gemini.
+ * Version:           1.3.0
  * Author:            James Wilson
  * Author URI:        https://github.com/jwilson529/summaraize
  * License:           GPL-2.0+
@@ -25,17 +25,14 @@
  * GitHub Plugin URI: https://github.com/jwilson529/summaraize
  */
 
-// If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ) {
-	die;
-}
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Currently plugin version.
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SUMMARAIZE_VERSION', '1.2.6' );
+define( 'SUMMARAIZE_VERSION', '1.3.0' );
 
 /**
  * The code that runs during plugin activation.
@@ -43,6 +40,7 @@ define( 'SUMMARAIZE_VERSION', '1.2.6' );
  */
 function summaraize_activate() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-summaraize-activator.php';
+	require_once plugin_dir_path( __FILE__ ) . 'includes/class-summaraize-logger.php';
 	Summaraize_Activator::activate();
 
 	// Ensure default post types are set during activation.
@@ -59,6 +57,7 @@ function summaraize_activate() {
  */
 function summaraize_deactivate() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-summaraize-deactivator.php';
+	require_once plugin_dir_path( __FILE__ ) . 'includes/class-summaraize-logger.php';
 	Summaraize_Deactivator::deactivate();
 }
 

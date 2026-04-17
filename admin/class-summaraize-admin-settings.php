@@ -10,10 +10,7 @@
  * @since   1.0.0
  */
 
-// Prevent direct access.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Summaraize_Admin_Settings
@@ -23,6 +20,25 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 1.0.0
  */
 class Summaraize_Admin_Settings {
+
+	/**
+	 * Add the plugin settings link on the plugins screen.
+	 *
+	 * @since 1.2.6
+	 * @param array $links Existing action links.
+	 * @return array
+	 */
+	public function add_settings_link( $links ) {
+		$settings_link = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( 'options-general.php?page=summaraize-settings' ) ),
+			esc_html__( 'Settings', 'summaraize' )
+		);
+
+		array_unshift( $links, $settings_link );
+
+		return $links;
+	}
 
 	/**
 	 * Register the plugin settings page.
@@ -101,6 +117,13 @@ class Summaraize_Admin_Settings {
 		);
 		register_setting(
 			'summaraize_settings',
+			'summaraize_ai_model',
+			array(
+				'sanitize_callback' => array( 'Summaraize_OpenAI_Settings', 'sanitize_openai_model' ),
+			)
+		);
+		register_setting(
+			'summaraize_settings',
 			'summaraize_google_gemini_api_key',
 			array( 'sanitize_callback' => 'sanitize_text_field' )
 		);
@@ -129,6 +152,15 @@ class Summaraize_Admin_Settings {
 				'summaraize_settings',
 				'summaraize_settings_section',
 				array( 'label_for' => 'summaraize_openai_api_key' )
+			);
+
+			add_settings_field(
+				'summaraize_ai_model',
+				__( 'OpenAI Model', 'summaraize' ),
+				array( $openai_settings, 'summaraize_ai_model_callback' ),
+				'summaraize_settings',
+				'summaraize_settings_section',
+				array( 'label_for' => 'summaraize_ai_model' )
 			);
 
 			$open_api_key = get_option( 'summaraize_openai_api_key' );
@@ -617,6 +649,10 @@ class Summaraize_Admin_Settings {
 		} else {
 			$field_value = isset( $_POST['field_value'] ) ? sanitize_text_field( wp_unslash( $_POST['field_value'] ) ) : '';
 		}
+
+		if ( 'summaraize_ai_model' === $option_key ) {
+			$field_value = Summaraize_OpenAI_Settings::sanitize_openai_model( $field_value );
+		}
 		$success = update_option( $option_key, $field_value );
 		wp_cache_flush();
 		$current_value = get_option( $option_key, array() );
@@ -652,7 +688,12 @@ class Summaraize_Admin_Settings {
 			wp_send_json_error( array( 'message' => __( 'Missing post ID or points data.', 'summaraize' ) ) );
 		}
 
-		$post_id        = absint( $_POST['post_id'] );
+		$post_id = absint( $_POST['post_id'] );
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'summaraize' ) ) );
+		}
+
 		$sanitized_json = sanitize_text_field( wp_unslash( $_POST['field_value'] ) );
 		$sorted_points  = json_decode( $sanitized_json, true );
 

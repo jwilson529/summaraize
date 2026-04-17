@@ -6,10 +6,7 @@
  * @since   1.0.0
  */
 
-// Prevent direct access.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Summaraize_Google_Gemini_Settings
@@ -35,6 +32,10 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 
 		if ( ! check_ajax_referer( 'summaraize_ajax_nonce', 'nonce', false ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid nonce', 'summaraize' ) ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'summaraize' ) ) );
 		}
 
 		if ( ! isset( $_POST['api_key'] ) ) {

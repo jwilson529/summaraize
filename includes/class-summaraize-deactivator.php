@@ -9,6 +9,8 @@
  * @subpackage Summaraize/includes
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Fired during plugin deactivation.
  *
@@ -29,5 +31,6 @@ class Summaraize_Deactivator {
 	 * @since    1.0.0
 	 */
 	public static function deactivate() {
+		Summaraize_Logger::info( 'Plugin deactivated.' );
 	}
 }

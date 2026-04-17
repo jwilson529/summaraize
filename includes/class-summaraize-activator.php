@@ -9,6 +9,8 @@
  * @subpackage Summaraize/includes
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Fired during plugin activation.
  *
@@ -29,5 +31,10 @@ class Summaraize_Activator {
 	 * @since    1.0.0
 	 */
 	public static function activate() {
+		if ( false === get_option( 'summaraize_post_types', false ) ) {
+			update_option( 'summaraize_post_types', array( 'post' ) );
+		}
+
+		Summaraize_Logger::info( 'Plugin activated.' );
 	}
 }

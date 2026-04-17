@@ -2,29 +2,45 @@
 /**
  * Fired when the plugin is uninstalled.
  *
- * When populating this file, consider the following flow
- * of control:
- *
- * - This method should be static
- * - Check if the $_REQUEST content actually is the plugin name
- * - Run an admin referrer check to make sure it goes through authentication
- * - Verify the output of $_GET makes sense
- * - Repeat with other user roles. Best directly by using the links/query string parameters.
- * - Repeat things for multisite. Once for a single site in the network, once sitewide.
- *
- * This file may be updated more in future version of the Boilerplate; however, this is the
- * general skeleton and outline for how the file should work.
- *
- * For more information, see the following discussion:
- * https://github.com/tommcfarlin/WordPress-Plugin-Boilerplate/pull/123#issuecomment-28541913
- *
  * @link       https://github.com/jwilson529/summaraize
  * @since      1.0.0
  *
  * @package    Summaraize
  */
 
+defined( 'ABSPATH' ) || exit;
+
 // If uninstall not called from WordPress, then exit.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
+
+/**
+ * Cleanup plugin data.
+ */
+$options = array(
+	'summaraize_ai_provider',
+	'summaraize_openai_api_key',
+	'summaraize_google_gemini_api_key',
+	'summaraize_ai_model',
+	'summaraize_post_types',
+	'summaraize_display_mode',
+	'summaraize_display_position',
+	'summaraize_widget_title',
+	'summaraize_button_style',
+	'summaraize_button_color',
+	'summaraize_list_type',
+);
+
+foreach ( $options as $option ) {
+	delete_option( $option );
+}
+
+// Delete post meta.
+global $wpdb;
+$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE 'summaraize_%'" );
+
+// Clear transients.
+delete_transient( 'summaraize_openai_models' );
+delete_transient( 'summaraize_gemini_api_key_valid' );
+delete_transient( 'summaraize_gemini_models' );

@@ -1,57 +1,47 @@
-# Ignore common directories and files in WordPress plugin development
+# Dependencies
+/node_modules/
+/vendor/
 
-# Node modules
-node_modules/
-
-# Dependency directories
-vendor/
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Editor settings
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
-
-# Log files
-*.log
-
-# Compiled asset files
-*.compiled
-*.min.css
-*.min.js
-*.css.map
-*.js.map
-
-# Packaging
+# Distribution artifacts
+/dist/
 *.zip
 *.tar.gz
 *.rar
 
-# Temporary files
+# QA outputs
+/check.txt
+/phpmd.txt
+/plugin-error.log
+*.log
+/.phpunit.result.cache
+
+# Local WordPress test harness
+/.wp-core/
+/.wp-tests/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+/.idea/
+/.vscode/
+*.sublime-project
+*.sublime-workspace
 *.bak
 *.swp
 *.tmp
 
-# Including the wp-config.php file if accidentally placed in the plugin directory
+# Accidental local config
 wp-config.php
 
-# Ignore specific plugin or theme related files that are auto-generated
-# e.g., if your plugin generates any specific cache or debug files, exclude them here
-
-# Example for ignoring a custom cache directory (replace 'custom_cache/' with your actual directory)
-# custom_cache/
-phpmd.txt
-package.json.cstn-generator/
-check.txt
-plugin-error.log
+# Codex metadata
+/.codex
+/.codex/
 .codex_index.json
 .codex_run_meta.json
 .codex_tasks.csv
 .codex_test_output.log
+
+# Generated project docs
 AGENTS.md
 SPEC.md
 MEMORY.md
@@ -62,4 +52,6 @@ UI_AUDIT.md
 APP_FLOW.md
 FRONTEND_GUIDELINES.md
 DESIGN_LESSONS.md
-.cstn-generator/
+
+# Local generator output
+/.cstn-generator/

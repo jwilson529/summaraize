@@ -4,3 +4,5 @@
  *
  * @package    Summaraize
  */
+
+defined( 'ABSPATH' ) || exit;

@@ -63,7 +63,7 @@
                     setTimeout(function() { // Ensure that the tab is fully switched
                         var $aiModelSelect = $('#summaraize_ai_model');
                         if ($aiModelSelect.length) {
-                            $aiModelSelect.val('gpt-4o-mini').trigger('change');
+                            $aiModelSelect.val('gpt-5-mini').trigger('change');
                         } else {
                             console.error('[Summaraize] Select box #summaraize_ai_model not found.');
                         }
@@ -223,6 +223,147 @@
         }
 
         /**
+         * Safely parse JSON from string input.
+         * @param {string} maybeJson
+         * @returns {Object|null}
+         */
+        function parseJsonResponse(maybeJson) {
+            if ('string' !== typeof maybeJson || '' === maybeJson.trim()) {
+                return null;
+            }
+
+            try {
+                var parsed = JSON.parse(maybeJson);
+                return 'object' === typeof parsed ? parsed : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        /**
+         * Extract raw completion text from an OpenAI response payload.
+         * @param {Object|undefined} responsePayload
+         * @returns {string}
+         */
+        function getOpenAICompletionTextFromPayload(responsePayload) {
+            if (!responsePayload || 'object' !== typeof responsePayload || Array.isArray(responsePayload)) {
+                return '';
+            }
+
+            if (responsePayload.choices && Array.isArray(responsePayload.choices) && responsePayload.choices.length > 0) {
+                var completionMessage = responsePayload.choices[0].message;
+                if (completionMessage && 'string' === typeof completionMessage.content) {
+                    return completionMessage.content.trim();
+                }
+            }
+
+            return '';
+        }
+
+        /**
+         * Try to extract OpenAI completion text from either parsed or string payloads.
+         * @param {Object|undefined} responseData
+         * @returns {string}
+         */
+        function getOpenAICompletionTextFromErrorResponse(responseData) {
+            if (!responseData) {
+                return '';
+            }
+
+            var completionText = '';
+
+            if (responseData.debug_response_data) {
+                completionText = getOpenAICompletionTextFromPayload(responseData.debug_response_data);
+            }
+
+            if (!completionText && responseData.debug_response) {
+                completionText = getOpenAICompletionTextFromPayload(parseJsonResponse(responseData.debug_response));
+            }
+
+            if (!completionText && responseData.debug_attempts && responseData.debug_attempts.length) {
+                responseData.debug_attempts.some(function(attempt) {
+                    if (attempt.response_json) {
+                        completionText = getOpenAICompletionTextFromPayload(attempt.response_json);
+                    }
+
+                    if (!completionText && attempt.response_body) {
+                        completionText = getOpenAICompletionTextFromPayload(parseJsonResponse(attempt.response_body));
+                    }
+
+                    return '' !== completionText;
+                });
+            }
+
+            return completionText;
+        }
+
+        /**
+         * Parse points from OpenAI completion text.
+         * @param {string} completionText
+         * @returns {string}
+         */
+        function getOpenAIPointsFromCompletionText(completionText) {
+            var parsedContent = parseJsonResponse(completionText);
+            if (!parsedContent || !Array.isArray(parsedContent.points)) {
+                return '';
+            }
+
+            return JSON.stringify(
+                {
+                    points: parsedContent.points,
+                },
+                null,
+                2
+            );
+        }
+
+        function getSummaraizeDebugOutput(responseData) {
+            if (!summaraize_admin_vars || !summaraize_admin_vars.summaraize_openai_debug || !responseData) {
+                return '';
+            }
+
+            var completionText = getOpenAICompletionTextFromErrorResponse(responseData);
+            if (completionText) {
+                var parsedPoints = getOpenAIPointsFromCompletionText(completionText);
+                if (parsedPoints) {
+                    return parsedPoints;
+                }
+
+                return completionText;
+            }
+
+            if (responseData.debug_response) {
+                return responseData.debug_response;
+            }
+
+            if (responseData.debug_attempts) {
+                return JSON.stringify(responseData.debug_attempts, null, 2);
+            }
+
+            return '';
+        }
+
+        /**
+         * Show summary error modal with optional debug output.
+         * @param {string} message Error message for users.
+         * @param {Object|undefined} responseData Response payload from AJAX.
+         */
+        function showSummaraizeErrorModal(message, responseData) {
+            $('#summaraize-modal-message').html(message || 'An unexpected error occurred.');
+
+            var $debugOutput = $('#summaraize-modal-debug');
+            var debugOutputText = getSummaraizeDebugOutput(responseData);
+
+            if (debugOutputText) {
+                $debugOutput.text(debugOutputText).removeAttr('hidden');
+            } else {
+                $debugOutput.text('').attr('hidden', 'hidden');
+            }
+
+            $('#summaraize-error-modal').fadeIn();
+        }
+
+        /**
          * Toggle settings fields based on display mode.
          */
         function toggleSettingsFields() {
@@ -358,6 +499,8 @@
             var $button = $(this);
             $button.prop('disabled', true);
 
+            $('#summaraize-modal-debug').text('').attr('hidden', 'hidden');
+
             // Get spinner and text elements
             var $spinner = $button.find('.summaraize-spinner');
             var $text    = $button.find('.button-text');
@@ -383,6 +526,7 @@
                     data: {
                         action: 'summaraize_gather_content',
                         nonce: summaraize_admin_vars.summaraize_ajax_nonce,
+                        summaraize_openai_debug: summaraize_admin_vars.summaraize_openai_debug ? 1 : 0,
                         title: editorData.title,
                         tags: editorData.tags || '',
                         content: editorData.content,
@@ -401,11 +545,9 @@
                             }
                         });
                     } else if (!response.success && response.data && response.data.message) {
-                        $('#summaraize-modal-message').html(response.data.message);
-                        $('#summaraize-error-modal').fadeIn();
+                        showSummaraizeErrorModal(response.data.message, response.data);
                     } else {
-                        $('#summaraize-modal-message').text('An unexpected error occurred.');
-                        $('#summaraize-error-modal').fadeIn();
+                        showSummaraizeErrorModal('An unexpected error occurred.');
                         console.error('AJAX Error: An unexpected error occurred.');
                     }
                 })
@@ -413,8 +555,7 @@
                     $button.prop('disabled', false);
                     $spinner.hide();
                     $text.text('Generate Top 5 Points');
-                    $('#summaraize-modal-message').text('AJAX request failed: ' + textStatus);
-                    $('#summaraize-error-modal').fadeIn();
+                    showSummaraizeErrorModal('AJAX request failed: ' + textStatus);
                     console.error('AJAX Fail:', textStatus, errorThrown);
                 });
         });

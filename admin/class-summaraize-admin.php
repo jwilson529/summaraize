@@ -11,10 +11,7 @@
  * @since      1.0.0
  */
 
-// Prevent direct access.
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Class Summaraize_Admin
@@ -124,6 +121,7 @@ class Summaraize_Admin {
 					'summaraize_ajax_nonce'     => wp_create_nonce( 'summaraize_ajax_nonce' ),
 					'summaraize_meta_box_nonce' => wp_create_nonce( 'summaraize_meta_box' ),
 					'post_id'                   => get_the_ID(),
+					'summaraize_openai_debug'   => ( defined( 'WP_DEBUG' ) && WP_DEBUG ) || ( is_admin() && current_user_can( 'manage_options' ) ),
 				)
 			);
 		}
@@ -135,16 +133,18 @@ class Summaraize_Admin {
 	 * @return void
 	 */
 	public function summaraize_gather_content() {
-		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'summaraize_ajax_nonce' ) ) {
+		check_ajax_referer( 'summaraize_ajax_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_send_json_error(
 				array(
-					'message' => __( 'Invalid nonce.', 'summaraize' ),
+					'message' => __( 'Permission denied.', 'summaraize' ),
 				)
 			);
 			wp_die();
 		}
 
-		if ( ! isset( $_POST['content'] ) || empty( $_POST['content'] ) ) {
+		if ( empty( $_POST['content'] ) ) {
 			wp_send_json_error(
 				array(
 					'message' => __( 'Missing content.', 'summaraize' ),
@@ -164,7 +164,12 @@ class Summaraize_Admin {
 		}
 
 		if ( 'openai' === $ai_provider ) {
-			Summaraize_OpenAI_Settings::process_openai_request( $query );
+			Summaraize_OpenAI_Settings::process_openai_request(
+				$query,
+				isset( $_POST['summaraize_openai_debug'] ) && is_string( $_POST['summaraize_openai_debug'] )
+					? sanitize_text_field( wp_unslash( $_POST['summaraize_openai_debug'] ) )
+					: ''
+			);
 		} elseif ( 'google_gemini' === $ai_provider ) {
 			Summaraize_Google_Gemini_Settings::process_gemini_request( $query );
 		} else {
@@ -176,22 +181,5 @@ class Summaraize_Admin {
 		}
 
 		wp_die();
-	}
-
-	/**
-	 * Validates the gather content AJAX request.
-	 *
-	 * @return true|WP_Error True if valid, WP_Error otherwise.
-	 */
-	private function validate_gather_content_request() {
-		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'summaraize_ajax_nonce' ) ) {
-			return new WP_Error( 'invalid_nonce', __( 'Invalid nonce.', 'summaraize' ) );
-		}
-
-		if ( ! isset( $_POST['content'] ) ) {
-			return new WP_Error( 'missing_content', __( 'Missing content.', 'summaraize' ) );
-		}
-
-		return true;
 	}
 }

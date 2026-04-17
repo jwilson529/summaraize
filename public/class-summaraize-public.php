@@ -9,6 +9,8 @@
  * @subpackage Summaraize/public
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * The public-facing functionality of the plugin.
  *

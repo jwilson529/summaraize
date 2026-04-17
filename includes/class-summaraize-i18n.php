@@ -12,6 +12,8 @@
  * @subpackage Summaraize/includes
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Define the internationalization functionality.
  *

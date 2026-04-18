@@ -3,12 +3,12 @@ Contributors: jwilson529
 Tags: ai, summary, openai, gemini, tldr
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Free bring-your-own-key AI summaries for WordPress using OpenAI or Google Gemini.
+Free bring-your-own-key AI summaries for WordPress using OpenAI or Google Gemini, with workflow tools to keep summaries current across a site.
 
 == Description ==
 
@@ -21,6 +21,8 @@ SummarAIze is built for publishers who want a lightweight summary workflow:
 * Bring your own OpenAI or Google Gemini API key
 * Generate the top 5 key takeaways for posts and pages
 * Edit and reorder takeaway points before publishing
+* Track whether summaries are missing, current, stale, or manually edited
+* Generate missing summaries in bulk and optionally auto-generate on first publish
 * Display summaries above content, below content, or in a popup
 * Customize output with shortcode attributes for title, mode, list type, and popup button styling
 * Use the plugin for free, with API usage billed only by your chosen provider
@@ -39,6 +41,7 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 3. Go to Settings > SummarAIze.
 4. Select OpenAI or Google Gemini and enter your API key.
 5. Open a post or page, generate takeaways, then edit or reorder them before publishing.
+6. Optionally use bulk actions or publish-time automation to keep summaries current across your site.
 
 == Shortcode ==
 
@@ -67,6 +70,12 @@ No. SummarAIze is a free plugin. You bring your own provider account and pay Ope
 = Can I customize the summaries? =
 Absolutely. You can edit the generated key takeaways in the editor and use shortcodes to change the display.
 
+= Can I generate summaries in bulk? =
+Yes. SummarAIze adds bulk actions to supported post type list screens so you can generate missing summaries or explicitly regenerate existing ones.
+
+= Will auto-generation overwrite my edited summaries? =
+No. The publish-time automation mode only generates a summary when one is missing. Manual edits are treated as user-managed.
+
 = How much does SummarAIze cost? =
 The plugin is free and open-source. API usage with OpenAI or Gemini may incur charges based on your provider plan.
 
@@ -86,6 +95,12 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 6. Reorder takeaway points before publishing.
 
 == Changelog ==
+
+= 1.4.0 =
+* Added summary lifecycle tracking for missing, current, stale, and manually edited summaries.
+* Added bulk generation and regeneration actions in supported post type list screens.
+* Added optional auto-generate-on-publish for posts that do not already have a summary.
+* Added summary provenance details in the editor so users can see provider, model, and generation time.
 
 = 1.3.0 =
 * Expanded OpenAI support to newer GPT-5 and reasoning-capable models.
@@ -135,6 +150,9 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 * Initial public release.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+**Workflow automation.** This release adds summary status tracking, bulk generation tools, and an optional first-publish auto-generate mode without changing how existing summaries render.
 
 = 1.3.0 =
 Enhanced OpenAI support, better parsing reliability, and cleaner uninstall behavior.

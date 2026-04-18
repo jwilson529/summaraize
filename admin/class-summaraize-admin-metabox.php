@@ -84,6 +84,9 @@ class Summaraize_Admin_Metabox {
 		$button_color      = get_post_meta( $post->ID, 'summaraize_button_color', true );
 		$list_type         = get_post_meta( $post->ID, 'summaraize_list_type', true );
 
+		Summaraize_Summary_Manager::render_summary_status_panel( $post->ID );
+		Summaraize_Summary_Manager::render_editor_session_hidden_fields( $post->ID );
+
 		echo '<button id="generate-summaraize-button" type="button">';
 		echo '<div class="summaraize-spinner" style="display: none;"></div>';
 		echo '<span class="button-text">' . esc_html__( 'Generate Top 5 Points', 'summaraize' ) . '</span>';
@@ -243,6 +246,18 @@ class Summaraize_Admin_Metabox {
 				$summaraize_points = array_filter( $summaraize_points, 'strlen' );
 
 				update_post_meta( $post_id, 'summaraize_points', $summaraize_points );
+
+				Summaraize_Summary_Manager::sync_editor_session_generation_state(
+					$post_id,
+					$summaraize_points,
+					array(
+						Summaraize_Summary_Manager::META_GENERATED_AT          => isset( $_POST[ Summaraize_Summary_Manager::META_GENERATED_AT ] ) ? sanitize_text_field( wp_unslash( $_POST[ Summaraize_Summary_Manager::META_GENERATED_AT ] ) ) : '',
+						Summaraize_Summary_Manager::META_SOURCE_HASH           => isset( $_POST[ Summaraize_Summary_Manager::META_SOURCE_HASH ] ) ? sanitize_text_field( wp_unslash( $_POST[ Summaraize_Summary_Manager::META_SOURCE_HASH ] ) ) : '',
+						Summaraize_Summary_Manager::META_GENERATION_PROVIDER   => isset( $_POST[ Summaraize_Summary_Manager::META_GENERATION_PROVIDER ] ) ? sanitize_text_field( wp_unslash( $_POST[ Summaraize_Summary_Manager::META_GENERATION_PROVIDER ] ) ) : '',
+						Summaraize_Summary_Manager::META_GENERATION_MODEL      => isset( $_POST[ Summaraize_Summary_Manager::META_GENERATION_MODEL ] ) ? sanitize_text_field( wp_unslash( $_POST[ Summaraize_Summary_Manager::META_GENERATION_MODEL ] ) ) : '',
+						Summaraize_Summary_Manager::META_GENERATED_POINTS_HASH => isset( $_POST[ Summaraize_Summary_Manager::META_GENERATED_POINTS_HASH ] ) ? sanitize_text_field( wp_unslash( $_POST[ Summaraize_Summary_Manager::META_GENERATED_POINTS_HASH ] ) ) : '',
+					)
+				);
 			}
 		}
 

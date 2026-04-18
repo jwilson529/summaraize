@@ -60,6 +60,28 @@
             return { title: title, content: content, tags: tags };
         }
 
+        /**
+         * Persist server-provided summary metadata in hidden metabox inputs.
+         * @param {Object|null} summaryMeta
+         */
+        function updateSummaryMetaFields(summaryMeta) {
+            if (!summaryMeta || 'object' !== typeof summaryMeta || Array.isArray(summaryMeta)) {
+                return;
+            }
+
+            [
+                'summaraize_generated_at',
+                'summaraize_source_hash',
+                'summaraize_generation_provider',
+                'summaraize_generation_model',
+                'summaraize_generated_points_hash'
+            ].forEach(function(fieldName) {
+                if (Object.prototype.hasOwnProperty.call(summaryMeta, fieldName)) {
+                    $('#' + fieldName).val(summaryMeta[fieldName] || '');
+                }
+            });
+        }
+
 
 
         /**
@@ -562,10 +584,12 @@
                     $spinner.hide();
                     $text.text('Generate Top 5 Points');
                     if (response.success && response.data.points) {
+                        updateSummaryMetaFields(response.data.summary_meta || null);
                         response.data.points.forEach(function(point, index) {
+                            var pointText = 'string' === typeof point ? point : (point && 'string' === typeof point.text ? point.text : '');
                             var inputField = $('#summaraize_points_' + (index + 1));
                             if (inputField.length) {
-                                inputField.val(point.text).change();
+                                inputField.val(pointText).change();
                             }
                         });
                     } else if (!response.success && response.data && response.data.message) {

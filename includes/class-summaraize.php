@@ -114,6 +114,7 @@ class Summaraize {
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-openai-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-google-gemini-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'includes/class-summaraize-summary-manager.php';
 
 		/**
 		 * The class responsible for defining all metabox items.
@@ -159,6 +160,7 @@ class Summaraize {
 		$plugin_openai   = new Summaraize_OpenAI_Settings();
 		$plugin_gemini   = new Summaraize_Google_Gemini_Settings();
 		$plugin_metabox  = new Summaraize_Admin_Metabox();
+		$summary_manager = new Summaraize_Summary_Manager();
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_menu', $plugin_settings, 'summaraize_register_options_page' );
@@ -171,7 +173,17 @@ class Summaraize {
 		$this->loader->add_action( 'add_meta_boxes', $plugin_metabox, 'add_meta_box' );
 		$this->loader->add_action( 'save_post', $plugin_metabox, 'save_summaraize_points' );
 		$this->loader->add_action( 'admin_notices', $plugin_settings, 'display_admin_notices' );
+		$this->loader->add_action( 'admin_notices', $summary_manager, 'maybe_render_bulk_notice' );
 		$this->loader->add_filter( 'plugin_action_links_' . plugin_basename( dirname( __DIR__ ) . '/summaraize.php' ), $plugin_settings, 'add_settings_link' );
+		$this->loader->add_action( 'transition_post_status', $summary_manager, 'schedule_auto_generate_on_publish', 10, 3 );
+		$this->loader->add_action( Summaraize_Summary_Manager::AUTO_GENERATE_EVENT, $summary_manager, 'run_scheduled_auto_generate' );
+
+		foreach ( Summaraize_Summary_Manager::get_supported_post_types() as $post_type ) {
+			$this->loader->add_filter( 'bulk_actions-edit-' . $post_type, $summary_manager, 'register_bulk_actions' );
+			$this->loader->add_filter( 'handle_bulk_actions-edit-' . $post_type, $summary_manager, 'handle_bulk_actions', 10, 3 );
+			$this->loader->add_filter( 'manage_' . $post_type . '_posts_columns', $summary_manager, 'add_status_column' );
+			$this->loader->add_action( 'manage_' . $post_type . '_posts_custom_column', $summary_manager, 'render_status_column', 10, 2 );
+		}
 	}
 
 	/**

@@ -33,6 +33,7 @@ $summaraize_options = array(
 	'summaraize_button_style',
 	'summaraize_button_color',
 	'summaraize_list_type',
+	'summaraize_auto_generate_mode',
 );
 
 foreach ( $summaraize_options as $summaraize_option ) {
@@ -51,6 +52,12 @@ $summaraize_post_meta_keys = array(
 	'summaraize_button_style',
 	'summaraize_button_color',
 	'summaraize_list_type',
+	'summaraize_generated_at',
+	'summaraize_source_hash',
+	'summaraize_generation_provider',
+	'summaraize_generation_model',
+	'summaraize_generated_points_hash',
+	'summaraize_manually_edited',
 );
 
 foreach ( $summaraize_post_meta_keys as $summaraize_post_meta_key ) {

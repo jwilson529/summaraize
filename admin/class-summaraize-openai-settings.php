@@ -295,7 +295,37 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	 * @return void Outputs a JSON response with the extracted key points or an error.
 	 */
 	public static function process_openai_request( $query, $debug_request = '' ) {
-		// Retrieve API key and model from settings.
+		$result = self::request_openai_summary( $query, $debug_request );
+
+		if ( is_wp_error( $result ) ) {
+			$error_data = $result->get_error_data();
+
+			if ( ! is_array( $error_data ) || empty( $error_data ) ) {
+				$error_data = array(
+					'message' => $result->get_error_message(),
+				);
+			}
+
+			wp_send_json_error( $error_data );
+			return;
+		}
+
+		wp_send_json_success(
+			array(
+				'points' => $result['points'],
+			)
+		);
+	}
+
+	/**
+	 * Request summary points from OpenAI and return structured data.
+	 *
+	 * @since 1.4.0
+	 * @param string $query         The content to summarize.
+	 * @param string $debug_request Raw debug flag passed from the request.
+	 * @return array|WP_Error
+	 */
+	public static function request_openai_summary( $query, $debug_request = '' ) {
 		$api_key        = get_option( 'summaraize_openai_api_key' );
 		$selected_model = self::sanitize_openai_model( get_option( 'summaraize_ai_model', self::OPENAI_DEFAULT_MODEL ) );
 		$model_attempts = self::get_openai_request_model_candidates( $selected_model );
@@ -303,13 +333,16 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 		$debug_enabled  = self::is_openai_request_debug_enabled( $debug_request );
 		$debug_attempts = array();
 
-		// Verify that the API key is set.
 		if ( empty( $api_key ) ) {
-			wp_send_json_error( array( 'message' => __( 'API key is not configured.', 'summaraize' ) ) );
-			return;
+			return new WP_Error(
+				'summaraize_openai_missing_key',
+				__( 'API key is not configured.', 'summaraize' ),
+				array(
+					'message' => __( 'API key is not configured.', 'summaraize' ),
+				)
+			);
 		}
 
-		// Define the OpenAI Chat Completions endpoint.
 		$openai_url  = self::OPENAI_CHAT_COMPLETIONS_ENDPOINT;
 		$last_error  = __( 'OpenAI API request failed.', 'summaraize' );
 		$last_status = 0;
@@ -327,13 +360,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 				$last_error = $response->get_error_message();
 
 				if ( $debug_enabled ) {
-					$debug_attempts[] = self::build_openai_attempt_debug_payload(
-						$model,
-						0,
-						'',
-						array(),
-						$last_error
-					);
+					$debug_attempts[] = self::build_openai_attempt_debug_payload( $model, 0, '', array(), $last_error );
 				}
 
 				break;
@@ -349,101 +376,38 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 					$last_error = __( 'Failed to decode response.', 'summaraize' );
 
 					if ( $debug_enabled ) {
-						$debug_attempts[] = self::build_openai_attempt_debug_payload(
-							$model,
-							$response_code,
-							$last_body,
-							array(),
-							$last_error
-						);
+						$debug_attempts[] = self::build_openai_attempt_debug_payload( $model, $response_code, $last_body, array(), $last_error );
 					}
 
 					continue;
 				}
 
-				// Ensure we have choices and extract the completion.
-				if ( isset( $result['choices'] ) && ! empty( $result['choices'] ) ) {
-					if ( ! isset( $result['choices'][0]['message']['content'] ) || ! is_string( $result['choices'][0]['message']['content'] ) ) {
-						$last_error = __( 'Unexpected response structure.', 'summaraize' );
+				if ( ! isset( $result['choices'][0]['message']['content'] ) || ! is_string( $result['choices'][0]['message']['content'] ) ) {
+					$last_error = __( 'Unexpected response structure.', 'summaraize' );
 
-						if ( $debug_enabled ) {
-							$debug_attempts[] = self::build_openai_attempt_debug_payload(
-								$model,
-								$response_code,
-								$last_body,
-								$result,
-								$last_error
-							);
-						}
-
-						wp_send_json_error(
-							self::build_openai_request_error_payload(
-								$last_error,
-								$selected_model,
-								$model_attempts,
-								$debug_attempts,
-								$last_model,
-								$last_status,
-								$last_body,
-								$result,
-								$debug_enabled
-							)
-						);
-						return;
+					if ( $debug_enabled ) {
+						$debug_attempts[] = self::build_openai_attempt_debug_payload( $model, $response_code, $last_body, $result, $last_error );
 					}
 
-					$completion = $result['choices'][0]['message']['content'];
+					break;
+				}
 
-					$json_result = self::extract_points_from_openai_completion( $completion );
-					if ( ! is_array( $json_result ) ) {
-						$last_error = __( 'Failed to decode completion response.', 'summaraize' );
-
-						if ( $debug_enabled ) {
-							$debug_attempts[] = self::build_openai_attempt_debug_payload(
-								$model,
-								$response_code,
-								$last_body,
-								$result,
-								$last_error
-							);
-						}
-
-						continue;
-					}
-
-					if ( isset( $json_result['points'] ) && is_array( $json_result['points'] ) ) {
-						wp_send_json_success( array( 'points' => $json_result['points'] ) );
-						return;
-					}
-
+				$completion  = $result['choices'][0]['message']['content'];
+				$json_result = self::extract_points_from_openai_completion( $completion );
+				if ( ! is_array( $json_result ) || ! isset( $json_result['points'] ) || ! is_array( $json_result['points'] ) ) {
 					$last_error = __( 'No key points extracted.', 'summaraize' );
 
 					if ( $debug_enabled ) {
-						$debug_attempts[] = self::build_openai_attempt_debug_payload(
-							$model,
-							$response_code,
-							$last_body,
-							$result,
-							$last_error
-						);
+						$debug_attempts[] = self::build_openai_attempt_debug_payload( $model, $response_code, $last_body, $result, $last_error );
 					}
 
 					continue;
 				}
 
-				$last_error = __( 'Unexpected response structure.', 'summaraize' );
-
-				if ( $debug_enabled ) {
-					$debug_attempts[] = self::build_openai_attempt_debug_payload(
-						$model,
-						$response_code,
-						$last_body,
-						$result,
-						$last_error
-					);
-				}
-
-				continue;
+				return array(
+					'points' => $json_result['points'],
+					'model'  => $last_model,
+				);
 			}
 
 			$decoded_body = self::decode_openai_error_response( $last_body );
@@ -454,11 +418,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 				$debug_attempts[] = self::build_openai_attempt_debug_payload( $model, $response_code, $last_body, $decoded_body, $last_error );
 			}
 
-			if ( ! self::is_openai_model_unavailable_error( $response_code, $decoded_body ) ) {
-				break;
-			}
-
-			if ( ( $attempt_index + 1 ) >= $total_attempts ) {
+			if ( ! self::is_openai_model_unavailable_error( $response_code, $decoded_body ) || ( $attempt_index + 1 ) >= $total_attempts ) {
 				break;
 			}
 
@@ -483,7 +443,9 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			)
 		);
 
-		wp_send_json_error(
+		return new WP_Error(
+			'summaraize_openai_request_failed',
+			$last_error,
 			self::build_openai_request_error_payload(
 				$last_error,
 				$selected_model,

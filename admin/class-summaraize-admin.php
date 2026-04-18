@@ -66,7 +66,11 @@ class Summaraize_Admin {
 		$is_settings_page = $current_screen &&
 			'settings_page_summaraize-settings' === $current_screen->id;
 
-		if ( $is_valid_editor_screen || $is_settings_page ) {
+		$is_supported_list_screen = $current_screen &&
+			'edit' === $current_screen->base &&
+			Summaraize_Summary_Manager::is_post_supported( $current_screen->post_type );
+
+		if ( $is_valid_editor_screen || $is_settings_page || $is_supported_list_screen ) {
 			wp_enqueue_style(
 				$this->plugin_name,
 				plugin_dir_url( __FILE__ ) . 'css/summaraize-admin.css',
@@ -100,17 +104,9 @@ class Summaraize_Admin {
 			wp_enqueue_script(
 				$this->plugin_name,
 				plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
-				array( 'jquery' ),
+				array( 'jquery', 'jquery-ui-sortable' ),
 				$this->version,
 				false
-			);
-
-			wp_enqueue_script(
-				'sortablejs',
-				plugin_dir_url( __FILE__ ) . 'js/Sortable.min.js',
-				array(),
-				'1.14.0',
-				true
 			);
 
 			wp_localize_script(
@@ -163,22 +159,44 @@ class Summaraize_Admin {
 			update_option( 'summaraize_ai_provider', $ai_provider );
 		}
 
-		if ( 'openai' === $ai_provider ) {
-			Summaraize_OpenAI_Settings::process_openai_request(
-				$query,
-				isset( $_POST['summaraize_openai_debug'] ) && is_string( $_POST['summaraize_openai_debug'] )
-					? sanitize_text_field( wp_unslash( $_POST['summaraize_openai_debug'] ) )
-					: ''
-			);
-		} elseif ( 'google_gemini' === $ai_provider ) {
-			Summaraize_Google_Gemini_Settings::process_gemini_request( $query );
-		} else {
+		if ( ! in_array( $ai_provider, $allowed_ai_providers, true ) ) {
 			wp_send_json_error(
 				array(
 					'message' => __( 'Unsupported AI provider.', 'summaraize' ),
 				)
 			);
+			wp_die();
 		}
+
+		$result = Summaraize_Summary_Manager::generate_summary_from_content(
+			$query,
+			isset( $_POST['summaraize_openai_debug'] ) && is_string( $_POST['summaraize_openai_debug'] )
+				? sanitize_text_field( wp_unslash( $_POST['summaraize_openai_debug'] ) )
+				: ''
+		);
+
+		if ( is_wp_error( $result ) ) {
+			$error_data = $result->get_error_data();
+			if ( ! is_array( $error_data ) || empty( $error_data ) ) {
+				$error_data = array(
+					'message' => $result->get_error_message(),
+				);
+			}
+
+			wp_send_json_error( $error_data );
+		}
+
+		wp_send_json_success(
+			array(
+				'points'       => $result['points'],
+				'summary_meta' => Summaraize_Summary_Manager::build_editor_session_summary_meta(
+					$result['points'],
+					$query,
+					$result['provider'],
+					$result['model']
+				),
+			)
+		);
 
 		wp_die();
 	}

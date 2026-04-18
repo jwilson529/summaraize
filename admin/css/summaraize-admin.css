@@ -135,6 +135,53 @@
     padding: 15px;
 }
 
+.summaraize-summary-status-panel {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    background: #f6f7f7;
+}
+
+.summaraize-summary-status-panel p {
+    margin: 0 0 6px;
+}
+
+.summaraize-summary-status-panel p:last-child {
+    margin-bottom: 0;
+}
+
+.summaraize-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.6;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.summaraize-status-missing {
+    background: #f0f0f1;
+    color: #50575e;
+}
+
+.summaraize-status-current {
+    background: #edfaef;
+    color: #146c2e;
+}
+
+.summaraize-status-stale {
+    background: #fcf0c1;
+    color: #8a4b00;
+}
+
+.summaraize-status-edited {
+    background: #e8f1ff;
+    color: #0a4b78;
+}
+
 #generate-summaraize-button {
     background: #0073aa;
     color: #fff;

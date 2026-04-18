@@ -1,6 +1,6 @@
 # SummarAIze
 
-Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editable key takeaways for posts and pages using your own OpenAI or Google Gemini API key.
+Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editable key takeaways for posts and pages using your own OpenAI or Google Gemini API key, with workflow tools to keep summaries current across a site.
 
 ![Plugin Banner](assets/banner-772x250.png)
 
@@ -9,6 +9,8 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 - Free plugin with no bundled credits or hosted proxy service
 - Use your own OpenAI or Google Gemini account and control your model spend
 - Generate, edit, and reorder takeaways directly inside WordPress
+- Track whether summaries are missing, current, stale, or manually edited
+- Generate missing summaries in bulk and optionally auto-generate on first publish
 - Display summaries above content, below content, or behind a popup trigger
 - Lightweight shortcode controls for layout, title, mode, and button styling
 
@@ -17,6 +19,9 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 - Bring your own OpenAI or Google Gemini API key
 - Generate the top 5 key takeaways for posts and pages
 - Edit and drag-and-drop reorder takeaway points before publishing
+- Summary lifecycle tracking for missing, current, stale, and manually edited content
+- Bulk generate or regenerate summaries from the Posts and Pages screens
+- Optional auto-generate on first publish when a post does not already have a summary
 - Support for above-content, below-content, and popup display modes
 - Shortcode attributes for list type, dark mode, title, and popup button styling
 - Works with the WordPress editor flow and classic meta box UI
@@ -34,6 +39,7 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 3. Go to Settings > SummarAIze.
 4. Choose OpenAI or Google Gemini and save your API key.
 5. Open a post or page, generate the takeaways, then edit or reorder them as needed.
+6. Optionally use bulk actions or publish-time automation to keep summaries current at scale.
 
 ## Shortcode
 
@@ -65,6 +71,13 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 - OpenAI: [Terms of Use](https://openai.com/terms), [Privacy Policy](https://openai.com/privacy)
 - Google Gemini: [Terms of Service](https://policies.google.com/terms), [Privacy Policy](https://policies.google.com/privacy)
 
+## Workflow Automation
+
+- Summary status badges show whether a post is `missing`, `current`, `stale`, or `edited`
+- Bulk actions let you generate missing summaries or force regeneration from the list table
+- Optional publish-time automation can generate a summary the first time a post is published
+- Manual edits stay protected and are not overwritten by the publish-time automation mode
+
 ## Screenshots
 
 1. ![Display options](assets/screenshot-1.png) Configure whether takeaways appear above or below post content.
@@ -83,6 +96,13 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 - `npm run dist` builds an install-ready archive at `dist/summaraize.zip`
 
 ## Changelog
+
+### 1.4.0
+
+- Added summary lifecycle tracking for missing, current, stale, and manually edited summaries.
+- Added bulk generation and regeneration actions in supported post type list screens.
+- Added optional auto-generate-on-publish for posts that do not already have a summary.
+- Added summary provenance details in the editor so users can see provider, model, and generation time.
 
 ### 1.3.0
 

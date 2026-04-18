@@ -23,6 +23,11 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 	const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=%s';
 
 	/**
+	 * Default Gemini model used for summary generation.
+	 */
+	const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+
+	/**
 	 * Handles AJAX request to validate the Google Gemini API key.
 	 *
 	 * @since 1.0.0
@@ -119,19 +124,46 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 	 * @return void
 	 */
 	public static function process_gemini_request( $query ) {
+		$response = self::request_gemini_summary( $query );
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error(
+				array(
+					'message' => $response->get_error_message(),
+				)
+			);
+			return;
+		}
+
+		wp_send_json_success(
+			array(
+				'points' => $response['points'],
+			)
+		);
+	}
+
+	/**
+	 * Request summary points from Gemini and return structured data.
+	 *
+	 * @since 1.4.0
+	 * @param string $query The text content to summarize.
+	 * @return array|WP_Error
+	 */
+	public static function request_gemini_summary( $query ) {
 		$api_key = get_option( 'summaraize_google_gemini_api_key' );
 
 		if ( empty( $api_key ) ) {
-			wp_send_json_error( __( 'Google Gemini API key is not configured.', 'summaraize' ) );
-			return;
+			return new WP_Error( 'summaraize_gemini_missing_key', __( 'Google Gemini API key is not configured.', 'summaraize' ) );
 		}
 
 		$response = self::make_gemini_api_request( $api_key, $query );
 		if ( is_wp_error( $response ) ) {
-			wp_send_json_error( $response->get_error_message() );
-		} else {
-			wp_send_json_success( array( 'points' => $response ) );
+			return $response;
 		}
+
+		return array(
+			'points' => $response,
+			'model'  => self::GEMINI_DEFAULT_MODEL,
+		);
 	}
 
 	/**

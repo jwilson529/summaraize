@@ -281,6 +281,14 @@ class Summaraize_Admin_Settings {
 			)
 		);
 
+		register_setting(
+			'summaraize_settings',
+			Summaraize_Summary_Manager::OPTION_AUTO_GENERATE_MODE,
+			array(
+				'sanitize_callback' => array( 'Summaraize_Summary_Manager', 'sanitize_auto_generate_mode' ),
+			)
+		);
+
 		add_settings_field(
 			'summaraize_post_types',
 			__( 'Post Types', 'summaraize' ),
@@ -293,6 +301,14 @@ class Summaraize_Admin_Settings {
 			'summaraize_widget_title',
 			__( 'Widget Title', 'summaraize' ),
 			array( $this, 'summaraize_widget_title_callback' ),
+			'summaraize_settings',
+			'summaraize_settings_section'
+		);
+
+		add_settings_field(
+			Summaraize_Summary_Manager::OPTION_AUTO_GENERATE_MODE,
+			__( 'Auto Generate on Publish', 'summaraize' ),
+			array( $this, 'summaraize_auto_generate_mode_callback' ),
 			'summaraize_settings',
 			'summaraize_settings_section'
 		);
@@ -527,6 +543,28 @@ class Summaraize_Admin_Settings {
 	}
 
 	/**
+	 * Callback for the publish-time auto-generation setting.
+	 *
+	 * @return void
+	 */
+	public function summaraize_auto_generate_mode_callback() {
+		$mode = Summaraize_Summary_Manager::get_auto_generate_mode();
+		?>
+		<select name="<?php echo esc_attr( Summaraize_Summary_Manager::OPTION_AUTO_GENERATE_MODE ); ?>" id="<?php echo esc_attr( Summaraize_Summary_Manager::OPTION_AUTO_GENERATE_MODE ); ?>">
+			<option value="<?php echo esc_attr( Summaraize_Summary_Manager::AUTO_GENERATE_OFF ); ?>" <?php selected( $mode, Summaraize_Summary_Manager::AUTO_GENERATE_OFF ); ?>>
+				<?php esc_html_e( 'Off', 'summaraize' ); ?>
+			</option>
+			<option value="<?php echo esc_attr( Summaraize_Summary_Manager::AUTO_GENERATE_MISSING_ON_PUBLISH ); ?>" <?php selected( $mode, Summaraize_Summary_Manager::AUTO_GENERATE_MISSING_ON_PUBLISH ); ?>>
+				<?php esc_html_e( 'Generate once when first publishing and summary is missing', 'summaraize' ); ?>
+			</option>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'This never overwrites an existing summary. Use the Posts or Pages bulk actions to generate or regenerate summaries in bulk.', 'summaraize' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
 	 * Callback for the button style field.
 	 *
 	 * @return void
@@ -634,6 +672,7 @@ class Summaraize_Admin_Settings {
 			'summaraize_button_style',
 			'summaraize_button_color',
 			'summaraize_list_type',
+			Summaraize_Summary_Manager::OPTION_AUTO_GENERATE_MODE,
 			'summaraize_prompt_type',
 			'summaraize_custom_prompt',
 			'summaraize_ai_model',

@@ -83,6 +83,8 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 
 1. ![Display options](assets/screenshot-1.png) Configure whether takeaways appear above or below post content.
 2. ![Dark mode](assets/screenshot-2.png) Show the front-end takeaway box in dark mode.
+3. ![Popup view](assets/screenshot-4.png) Render the summary in a popup layout.
+4. ![Drag and drop ordering](assets/screenshot-6.png) Reorder takeaway points before publishing.
 
 ## Development
 
@@ -93,6 +95,10 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 - `npm run dist` builds an install-ready archive at `dist/summaraize.zip`
 
 ## Changelog
+
+### 1.4.3
+
+- Restored captions for the remaining safe screenshot assets after removing the unwanted cropped screenshots.
 
 ### 1.4.2
 

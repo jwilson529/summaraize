@@ -32,6 +32,8 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	const OPENAI_MODELS_CACHE_KEY            = 'summaraize_openai_models';
 	const OPENAI_LOCKED_MODELS               = array(
 		'gpt-5-mini',
+		'gpt-5.5',
+		'gpt-5.5-2026-04-23',
 		'gpt-5',
 		'gpt-5-nano',
 	);
@@ -81,7 +83,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 		echo '<p class="description">';
 		esc_html_e( 'Select the OpenAI model used for summarization.', 'summaraize' );
 		echo ' ';
-		esc_html_e( 'GPT-5 is the latest OpenAI family; use `gpt-5` for the latest behavior, or `gpt-5-mini`/`gpt-5-nano` to reduce cost.', 'summaraize' );
+		esc_html_e( 'GPT-5.5 is OpenAI\'s latest flagship model; use `gpt-5.5` for the strongest results, or `gpt-5-mini`/`gpt-5-nano` to reduce cost.', 'summaraize' );
 		echo '</p>';
 	}
 

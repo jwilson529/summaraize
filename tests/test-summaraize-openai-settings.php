@@ -46,11 +46,12 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_sanitize_openai_model_uses_cached_model_list() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-4o-mini', 'gpt-4o', 'gpt-5', 'gpt-5.4' ), DAY_IN_SECONDS );
+		set_transient( 'summaraize_openai_models', array( 'gpt-4o-mini', 'gpt-4o', 'gpt-5', 'gpt-5.5', 'gpt-5.5-2026-04-23' ), DAY_IN_SECONDS );
 
 		$this->assertSame( 'gpt-5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5' ) );
-		$this->assertSame( 'gpt-5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.4' ) );
-		$this->assertSame( 'gpt-5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-4.1' ) );
+		$this->assertSame( 'gpt-5.5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.5' ) );
+		$this->assertSame( 'gpt-5.5-2026-04-23', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.5-2026-04-23' ) );
+		$this->assertSame( 'gpt-5.5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-4.1' ) );
 	}
 
 	/**
@@ -70,10 +71,12 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_sanitize_openai_model_rejects_unknown_gpt5_versions() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-5', 'gpt-5-mini', 'gpt-5.4', 'gpt-4o-mini' ), DAY_IN_SECONDS );
+		set_transient( 'summaraize_openai_models', array( 'gpt-5', 'gpt-5-mini', 'gpt-5.5', 'gpt-5.5-2026-04-23', 'gpt-5.4', 'gpt-4o-mini' ), DAY_IN_SECONDS );
 
 		$this->assertSame( 'gpt-5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5' ) );
 		$this->assertSame( 'gpt-5-mini', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5-mini' ) );
+		$this->assertSame( 'gpt-5.5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.5' ) );
+		$this->assertSame( 'gpt-5.5-2026-04-23', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.5-2026-04-23' ) );
 		$this->assertSame( 'gpt-5-mini', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.4' ) );
 	}
 
@@ -87,7 +90,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'build_openai_request_payload' );
 		$method->setAccessible( true );
 
-		$payload = $method->invokeArgs( null, array( 'sample content', 'gpt-5.4' ) );
+		$payload = $method->invokeArgs( null, array( 'sample content', 'gpt-5.5' ) );
 
 		$this->assertArrayHasKey( 'max_completion_tokens', $payload );
 		$this->assertArrayNotHasKey( 'temperature', $payload );
@@ -104,6 +107,20 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 
 		$this->assertSame(
 			array( 'gpt-4o-mini', 'gpt-4o', 'text-embedding-3-small' ),
+			Summaraize_OpenAI_Settings::get_available_openai_models()
+		);
+	}
+
+	/**
+	 * Ensure supported GPT-5.5 models are returned in plugin fallback order.
+	 *
+	 * @return void
+	 */
+	public function test_get_available_openai_models_includes_gpt55_models() {
+		set_transient( 'summaraize_openai_models', array( 'gpt-5.5-2026-04-23', 'gpt-5', 'gpt-5.5', 'gpt-5-mini', 'gpt-5-nano' ), DAY_IN_SECONDS );
+
+		$this->assertSame(
+			array( 'gpt-5-mini', 'gpt-5.5', 'gpt-5.5-2026-04-23', 'gpt-5', 'gpt-5-nano' ),
 			Summaraize_OpenAI_Settings::get_available_openai_models()
 		);
 	}

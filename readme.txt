@@ -3,7 +3,7 @@ Contributors: jwilson529
 Tags: ai, summary, openai, gemini, tldr
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -19,6 +19,7 @@ This plugin does not bundle AI credits or route requests through a hosted Summar
 SummarAIze is built for publishers who want a lightweight summary workflow:
 
 * Bring your own OpenAI or Google Gemini API key
+* Choose supported OpenAI models including GPT-5.5, GPT-5, GPT-5 mini, and GPT-5 nano
 * Generate the top 5 key takeaways for posts and pages
 * Edit and reorder takeaway points before publishing
 * Track whether summaries are missing, current, stale, or manually edited
@@ -96,6 +97,11 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 
 == Changelog ==
 
+= 1.4.1 =
+* Added OpenAI GPT-5.5 and `gpt-5.5-2026-04-23` model support.
+* Updated OpenAI settings guidance to call out GPT-5.5 as the latest flagship option while keeping GPT-5 mini as the cost-conscious default.
+* Expanded OpenAI model tests for GPT-5.5 sanitization, fallback ordering, and request payload handling.
+
 = 1.4.0 =
 * Added summary lifecycle tracking for missing, current, stale, and manually edited summaries.
 * Added bulk generation and regeneration actions in supported post type list screens.
@@ -150,6 +156,9 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 * Initial public release.
 
 == Upgrade Notice ==
+
+= 1.4.1 =
+**GPT-5.5 support.** OpenAI users can now select GPT-5.5 when it is available to their account, while GPT-5 mini remains the default model.
 
 = 1.4.0 =
 **Workflow automation.** This release adds summary status tracking, bulk generation tools, and an optional first-publish auto-generate mode without changing how existing summaries render.

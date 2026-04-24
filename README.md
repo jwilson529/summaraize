@@ -7,7 +7,7 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 ## Why SummarAIze
 
 - Free plugin with no bundled credits or hosted proxy service
-- Use your own OpenAI or Google Gemini account and control your model spend
+- Use your own OpenAI or Google Gemini account, including GPT-5.5, and control your model spend
 - Generate, edit, and reorder takeaways directly inside WordPress
 - Track whether summaries are missing, current, stale, or manually edited
 - Generate missing summaries in bulk and optionally auto-generate on first publish
@@ -17,6 +17,7 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 ## Feature Highlights
 
 - Bring your own OpenAI or Google Gemini API key
+- Choose supported OpenAI models including GPT-5.5, GPT-5, GPT-5 mini, and GPT-5 nano
 - Generate the top 5 key takeaways for posts and pages
 - Edit and drag-and-drop reorder takeaway points before publishing
 - Summary lifecycle tracking for missing, current, stale, and manually edited content
@@ -96,6 +97,12 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 - `npm run dist` builds an install-ready archive at `dist/summaraize.zip`
 
 ## Changelog
+
+### 1.4.1
+
+- Added OpenAI GPT-5.5 and `gpt-5.5-2026-04-23` model support.
+- Updated OpenAI settings guidance to call out GPT-5.5 as the latest flagship option while keeping GPT-5 mini as the cost-conscious default.
+- Expanded OpenAI model tests for GPT-5.5 sanitization, fallback ordering, and request payload handling.
 
 ### 1.4.0
 

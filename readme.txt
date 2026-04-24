@@ -3,7 +3,7 @@ Contributors: jwilson529
 Tags: ai, summary, openai, gemini, tldr
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.4.3
+Stable tag: 1.4.4
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -90,10 +90,13 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 
 1. Configure whether takeaways appear above or below content.
 2. Show the front-end takeaway box in dark mode.
-4. Render the summary in a popup layout.
-6. Reorder takeaway points before publishing.
+3. Render the summary in a popup layout.
+4. Reorder takeaway points before publishing.
 
 == Changelog ==
+
+= 1.4.4 =
+* Corrected WordPress.org screenshot caption ordering after the screenshot asset cleanup.
 
 = 1.4.3 =
 * Restored captions for the remaining safe screenshot assets after removing the unwanted cropped screenshots.
@@ -160,6 +163,9 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 * Initial public release.
 
 == Upgrade Notice ==
+
+= 1.4.4 =
+**Screenshot captions.** WordPress.org screenshot captions now align with the remaining safe screenshots after the cleanup.
 
 = 1.4.3 =
 **Screenshot captions.** Remaining safe screenshots now display with their correct captions after the screenshot cleanup.

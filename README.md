@@ -96,6 +96,10 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 
 ## Changelog
 
+### 1.4.4
+
+- Corrected WordPress.org screenshot caption ordering after the screenshot asset cleanup.
+
 ### 1.4.3
 
 - Restored captions for the remaining safe screenshot assets after removing the unwanted cropped screenshots.

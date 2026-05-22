@@ -10,12 +10,14 @@ DB_HOST="${WP_TESTS_DB_HOST:-db}"
 DB_NAME="${WP_TESTS_DB_NAME:-wordpress_test}"
 DB_USER="${WP_TESTS_DB_USER:-root}"
 DB_PASS="${WP_TESTS_DB_PASS:-root}"
-WP_VERSION="${WP_VERSION:-latest}"
+WP_VERSION="${WP_VERSION:-7.0}"
 PHPUNIT_VERSION="${PHPUNIT_VERSION:-9.6.20}"
 WP_TESTS_DOMAIN="${WP_TESTS_DOMAIN:-example.com}"
 WP_TESTS_EMAIL="${WP_TESTS_EMAIL:-test@example.com}"
 WP_TESTS_TITLE="${WP_TESTS_TITLE:-Summaraize Tests Suite}"
 WP_PHP_BINARY="${WP_PHP_BINARY:-$(command -v php)}"
+WP_CORE_VERSION_FILE="${WP_CORE_DIR}/.summaraize-wp-version"
+WP_TESTS_VERSION_FILE="${WP_TESTS_DIR}/.summaraize-wp-version"
 
 echo "==> Installing system deps"
 export DEBIAN_FRONTEND=noninteractive
@@ -33,16 +35,32 @@ phpunit --version
 echo "==> Installing WP core for tests"
 mkdir -p "${WP_TESTS_DIR}" "${WP_CORE_DIR}"
 
-if [ ! -f "${WP_CORE_DIR}/wp-load.php" ]; then
-	curl -Ls -o /tmp/wp.tar.gz "https://wordpress.org/latest.tar.gz"
+if [ ! -f "${WP_CORE_DIR}/wp-load.php" ] || [ "$(cat "${WP_CORE_VERSION_FILE}" 2>/dev/null || true)" != "${WP_VERSION}" ]; then
+	rm -rf "${WP_CORE_DIR}"
+	mkdir -p "${WP_CORE_DIR}"
+	if [ "latest" = "${WP_VERSION}" ]; then
+		WP_DOWNLOAD_URL="https://wordpress.org/latest.tar.gz"
+	else
+		WP_DOWNLOAD_URL="https://wordpress.org/wordpress-${WP_VERSION}.tar.gz"
+	fi
+	curl -fLs -o /tmp/wp.tar.gz "${WP_DOWNLOAD_URL}"
+	rm -rf /tmp/wordpress
 	tar -xzf /tmp/wp.tar.gz -C /tmp
 	rsync -a /tmp/wordpress/ "${WP_CORE_DIR}/"
+	echo "${WP_VERSION}" > "${WP_CORE_VERSION_FILE}"
 fi
 
 echo "==> Installing WP test suite"
-if [ ! -d "${WP_TESTS_DIR}/includes" ]; then
-	git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wp-develop
+if [ ! -d "${WP_TESTS_DIR}/includes" ] || [ "$(cat "${WP_TESTS_VERSION_FILE}" 2>/dev/null || true)" != "${WP_VERSION}" ]; then
+	rm -rf "${WP_TESTS_DIR}" /tmp/wp-develop
+	mkdir -p "${WP_TESTS_DIR}"
+	if [ "latest" = "${WP_VERSION}" ]; then
+		git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wp-develop
+	else
+		git clone --depth=1 --branch "${WP_VERSION}" https://github.com/WordPress/wordpress-develop.git /tmp/wp-develop
+	fi
 	rsync -a /tmp/wp-develop/tests/phpunit/ "${WP_TESTS_DIR}/"
+	echo "${WP_VERSION}" > "${WP_TESTS_VERSION_FILE}"
 fi
 
 echo "==> Creating wp-tests-config.php"

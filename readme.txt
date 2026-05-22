@@ -2,7 +2,7 @@
 Contributors: jwilson529
 Tags: ai, summary, openai, gemini, tldr
 Requires at least: 5.0
-Tested up to: 6.9
+Tested up to: 7.0
 Stable tag: 1.4.4
 Requires PHP: 7.2
 License: GPLv2 or later
@@ -96,6 +96,7 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 == Changelog ==
 
 = 1.4.4 =
+* Tested compatibility against WordPress 7.0.
 * Corrected WordPress.org screenshot caption ordering after the screenshot asset cleanup.
 
 = 1.4.3 =
@@ -165,7 +166,7 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 == Upgrade Notice ==
 
 = 1.4.4 =
-**Screenshot captions.** WordPress.org screenshot captions now align with the remaining safe screenshots after the cleanup.
+**WordPress 7.0 support.** Tested against WordPress 7.0 and corrected screenshot captions for the remaining safe assets.
 
 = 1.4.3 =
 **Screenshot captions.** Remaining safe screenshots now display with their correct captions after the screenshot cleanup.

@@ -44,6 +44,6 @@ services:
       WP_TESTS_DB_NAME: wordpress_test
       WP_TESTS_DB_USER: root
       WP_TESTS_DB_PASS: root
-      WP_VERSION: latest
+      WP_VERSION: ${WP_VERSION:-7.0}
       PHPUNIT_VERSION: 9.6.20
     command: ["bash", "-lc", "bash ./bin/docker-tests.sh"]

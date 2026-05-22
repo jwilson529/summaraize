@@ -29,7 +29,7 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 
 ## Requirements
 
-- WordPress 5.0 or newer
+- WordPress 5.0 or newer, tested through WordPress 7.0
 - PHP 7.2 or newer
 - An OpenAI or Google Gemini API key
 
@@ -98,6 +98,7 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 
 ### 1.4.4
 
+- Tested compatibility against WordPress 7.0.
 - Corrected WordPress.org screenshot caption ordering after the screenshot asset cleanup.
 
 ### 1.4.3

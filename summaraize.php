@@ -15,7 +15,7 @@
  * Plugin Name:       SummarAIze
  * Plugin URI:        https://github.com/jwilson529/summaraize
  * Description:       Free bring-your-own-key AI summaries for posts and pages using OpenAI or Google Gemini.
- * Version:           1.4.4
+ * Version:           1.4.5
  * Author:            James Wilson
  * Author URI:        https://github.com/jwilson529/summaraize
  * License:           GPL-2.0+
@@ -32,7 +32,7 @@ defined( 'ABSPATH' ) || exit;
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SUMMARAIZE_VERSION', '1.4.4' );
+define( 'SUMMARAIZE_VERSION', '1.4.5' );
 
 /**
  * The code that runs during plugin activation.

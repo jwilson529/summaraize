@@ -176,7 +176,7 @@ class Summaraize_Public {
 			echo '<div class="summaraize-popup-modal" style="display:none;">';
 			echo '<div class="summaraize-popup-content">';
 			echo '<span class="summaraize-popup-close">&times;</span>';
-			echo '<h2>' . esc_html( $widget_title ) . '</h2>';
+			echo wp_kses_post( $this->render_widget_title( $widget_title ) );
 
 			// Choose list type.
 						echo ( 'ordered' === $list_type ) ? '<ol>' : '<ul>';
@@ -197,7 +197,7 @@ class Summaraize_Public {
 		} else {
 			$mode_class = ( 'dark' === $mode ) ? 'dark' : 'light';
 			echo '<div class="summaraize ' . esc_attr( $mode_class ) . '">';
-			echo '<h2>' . esc_html( $widget_title ) . '</h2>';
+			echo wp_kses_post( $this->render_widget_title( $widget_title ) );
 
 			// Choose list type.
 						echo ( 'ordered' === $list_type ) ? '<ol>' : '<ul>';
@@ -223,6 +223,45 @@ class Summaraize_Public {
 		} else {
 			return $output . $content;
 		}
+	}
+
+	/**
+	 * Render the widget title without adding a content heading by default.
+	 *
+	 * @since 1.4.5
+	 * @param string $widget_title Widget title.
+	 * @return string
+	 */
+	private function render_widget_title( $widget_title ) {
+		$tag_name = $this->get_widget_title_tag();
+
+		return '<' . $tag_name . ' class="summaraize-title">' . esc_html( $widget_title ) . '</' . $tag_name . '>';
+	}
+
+	/**
+	 * Return the HTML tag used for the widget title.
+	 *
+	 * @since 1.4.5
+	 * @return string
+	 */
+	private function get_widget_title_tag() {
+		/**
+		 * Filters the HTML tag used for the SummarAIze widget title.
+		 *
+		 * The default paragraph avoids adding generated summary labels to
+		 * table-of-contents plugins that scan post content headings.
+		 *
+		 * @since 1.4.5
+		 * @param string $tag_name HTML tag name.
+		 */
+		$tag_name = apply_filters( 'summaraize_widget_title_tag', 'p' );
+		$tag_name = is_string( $tag_name ) ? sanitize_key( $tag_name ) : 'p';
+
+		if ( ! in_array( $tag_name, array( 'p', 'div', 'span', 'h2', 'h3', 'h4', 'h5', 'h6' ), true ) ) {
+			return 'p';
+		}
+
+		return $tag_name;
 	}
 
 

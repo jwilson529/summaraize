@@ -1,6 +1,6 @@
 {
   "name": "summaraize",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Free bring-your-own-key WordPress summaries with OpenAI or Google Gemini.",
   "main": "index.js",
   "scripts": {

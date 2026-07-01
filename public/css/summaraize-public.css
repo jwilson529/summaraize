@@ -9,7 +9,7 @@
     border-radius: 5px;
 }
 
-.summaraize.light h2 {
+.summaraize.light .summaraize-title {
     font-size: 1.5em;
     margin-bottom: 10px;
     color: #333;
@@ -55,7 +55,7 @@
     color: #fff;
 }
 
-.summaraize.dark h2 {
+.summaraize.dark .summaraize-title {
     font-size: 1.5em;
     margin-bottom: 10px;
     color: #fff;
@@ -116,6 +116,13 @@
     position: relative;
     z-index: 1001;
     animation: slide-down 0.5s ease; /* Slide down effect */
+}
+
+.summaraize-popup-content .summaraize-title {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: #333;
+    font-weight: bold;
 }
 
 @keyframes slide-down {

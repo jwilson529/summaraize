@@ -14,7 +14,7 @@
  * @wordpress-plugin
  * Plugin Name:       SummarAIze
  * Plugin URI:        https://github.com/jwilson529/summaraize
- * Description:       Free bring-your-own-key AI summaries for posts and pages using OpenAI or Google Gemini.
+ * Description:       Publisher-controlled AI key takeaways for WordPress using your own OpenAI or Google Gemini API key.
  * Version:           1.4.5
  * Author:            James Wilson
  * Author URI:        https://github.com/jwilson529/summaraize

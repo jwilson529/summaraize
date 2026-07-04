@@ -8,29 +8,29 @@ Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Free bring-your-own-key AI summaries for WordPress using OpenAI or Google Gemini, with workflow tools to keep summaries current across a site.
+Publisher-controlled AI key takeaways for WordPress. Bring your own API key, edit summaries, and bulk-manage them at scale.
 
 == Description ==
 
-SummarAIze is a free WordPress plugin that generates editable key takeaways for posts and pages using your own OpenAI or Google Gemini API key.
+SummarAIze is a free WordPress plugin for publishers who want editor-approved AI key takeaways across their site, using their own OpenAI or Google Gemini API key.
 
-This plugin does not bundle AI credits or route requests through a hosted SummarAIze service. You connect your own provider account, choose the model, and control the cost.
+It is built as a publishing workflow, not a hosted summary subscription. You connect your own provider account, choose the model, review the output, and control the cost. SummarAIze does not bundle AI credits or route requests through a hosted SummarAIze service.
 
-SummarAIze is built for publishers who want a lightweight summary workflow:
+Use SummarAIze when you need to keep summaries accurate, editable, and current across more than one post:
 
 * Bring your own OpenAI or Google Gemini API key
 * Choose supported OpenAI models including GPT-5.5, GPT-5, GPT-5 mini, and GPT-5 nano
-* Generate the top 5 key takeaways for posts and pages
+* Generate scannable key takeaways for posts and pages
 * Edit and reorder takeaway points before publishing
 * Track whether summaries are missing, current, stale, or manually edited
 * Generate missing summaries in bulk and optionally auto-generate on first publish
 * Display summaries above content, below content, or in a popup
 * Customize output with shortcode attributes for title, mode, list type, and popup button styling
-* Use the plugin for free, with API usage billed only by your chosen provider
+* Use the plugin for free, with no SummarAIze usage quota or summary subscription
 
 == Privacy ==
 
-SummarAIze sends post content to the AI provider you configure so it can generate takeaways. The plugin does not proxy requests through a third-party SummarAIze service.
+SummarAIze sends post content to the AI provider you configure so it can generate takeaways. The plugin does not proxy requests through a third-party SummarAIze service, and generated takeaways remain editable in WordPress before publishing.
 
 * OpenAI: [Terms of Use](https://openai.com/terms), [Privacy Policy](https://openai.com/privacy)
 * Google Gemini: [Terms of Service](https://policies.google.com/terms), [Privacy Policy](https://policies.google.com/privacy)
@@ -66,13 +66,13 @@ Supported attributes:
 Yes. You’ll need an API key from either OpenAI or Google Gemini. Both offer free tiers, though high usage may require a paid account.
 
 = Does SummarAIze include AI credits or a hosted API service? =
-No. SummarAIze is a free plugin. You bring your own provider account and pay OpenAI or Google directly for any API usage.
+No. SummarAIze is a free, bring-your-own-key plugin. You bring your own provider account and pay OpenAI or Google directly for any API usage. There is no SummarAIze-hosted relay and no monthly summary quota from SummarAIze.
 
 = Can I customize the summaries? =
-Absolutely. You can edit the generated key takeaways in the editor and use shortcodes to change the display.
+Yes. You can edit and reorder the generated key takeaways in the editor, then use shortcodes to control where and how they display.
 
 = Can I generate summaries in bulk? =
-Yes. SummarAIze adds bulk actions to supported post type list screens so you can generate missing summaries or explicitly regenerate existing ones.
+Yes. SummarAIze adds bulk actions to supported post type list screens so publishers can generate missing summaries or explicitly regenerate existing ones across a larger content library.
 
 = Will auto-generation overwrite my edited summaries? =
 No. The publish-time automation mode only generates a summary when one is missing. Manual edits are treated as user-managed.
@@ -200,4 +200,4 @@ Enhanced OpenAI support, better parsing reliability, and cleaner uninstall behav
 **Improved compatibility and summary rendering.** This update includes bug fixes, sanitization improvements, and better support for WordPress 6.7. Update now for the best performance.
 
 == Other Notes ==
-SummarAIze is designed as a free, bring-your-own-key summary plugin for WordPress publishers who want control over provider choice and API spend.
+SummarAIze is designed as a free, bring-your-own-key key takeaways workflow for WordPress publishers who want control over provider choice, API spend, and the final published summary.

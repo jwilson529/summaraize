@@ -1,14 +1,15 @@
 # SummarAIze
 
-Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editable key takeaways for posts and pages using your own OpenAI or Google Gemini API key, with workflow tools to keep summaries current across a site.
+Publisher-controlled AI key takeaways for WordPress. SummarAIze helps publishers generate, edit, bulk-manage, and display editor-approved summaries using their own OpenAI or Google Gemini API key.
 
 ![Plugin Banner](assets/banner-772x250.png)
 
 ## Why SummarAIze
 
-- Free plugin with no bundled credits or hosted proxy service
+- Built for publishers who want editor-approved key takeaways, not a black-box hosted summary feed
+- Free plugin with no bundled credits, SummarAIze-hosted relay, or monthly summary quota
 - Use your own OpenAI or Google Gemini account, including GPT-5.5, and control your model spend
-- Generate, edit, and reorder takeaways directly inside WordPress
+- Generate, edit, and reorder takeaways directly inside WordPress before publishing
 - Track whether summaries are missing, current, stale, or manually edited
 - Generate missing summaries in bulk and optionally auto-generate on first publish
 - Display summaries above content, below content, or behind a popup trigger
@@ -18,7 +19,7 @@ Free, bring-your-own-key AI summaries for WordPress. SummarAIze generates editab
 
 - Bring your own OpenAI or Google Gemini API key
 - Choose supported OpenAI models including GPT-5.5, GPT-5, GPT-5 mini, and GPT-5 nano
-- Generate the top 5 key takeaways for posts and pages
+- Generate scannable key takeaways for posts and pages
 - Edit and drag-and-drop reorder takeaway points before publishing
 - Summary lifecycle tracking for missing, current, stale, and manually edited content
 - Bulk generate or regenerate summaries from the Posts and Pages screens
@@ -67,7 +68,7 @@ Examples:
 
 ## Privacy
 
-SummarAIze sends post content to the AI provider you configure so it can generate takeaways. The plugin does not route requests through a third-party SummarAIze service and does not bundle API usage.
+SummarAIze sends post content to the AI provider you configure so it can generate takeaways. The plugin does not route requests through a third-party SummarAIze service, does not bundle API usage, and keeps generated takeaways editable in WordPress before publishing.
 
 - OpenAI: [Terms of Use](https://openai.com/terms), [Privacy Policy](https://openai.com/privacy)
 - Google Gemini: [Terms of Service](https://policies.google.com/terms), [Privacy Policy](https://policies.google.com/privacy)

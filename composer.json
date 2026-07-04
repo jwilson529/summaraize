@@ -1,6 +1,6 @@
 {
     "name": "jameswilson/summaraize",
-    "description": "Free bring-your-own-key WordPress summaries with OpenAI or Google Gemini.",
+    "description": "Publisher-controlled AI key takeaways for WordPress using your own OpenAI or Google Gemini API key.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [

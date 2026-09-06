@@ -15,7 +15,7 @@
  * Plugin Name:       SummarAIze
  * Plugin URI:        https://github.com/jwilson529/summaraize
  * Description:       Publisher-controlled AI key takeaways for WordPress using your own OpenAI or Google Gemini API key.
- * Version:           1.4.5
+ * Version:           1.4.6
  * Author:            James Wilson
  * Author URI:        https://github.com/jwilson529/summaraize
  * License:           GPL-2.0+
@@ -32,7 +32,7 @@ defined( 'ABSPATH' ) || exit;
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define( 'SUMMARAIZE_VERSION', '1.4.5' );
+define( 'SUMMARAIZE_VERSION', '1.4.6' );
 
 /**
  * The code that runs during plugin activation.

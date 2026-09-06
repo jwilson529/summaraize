@@ -1,6 +1,6 @@
 {
   "name": "summaraize",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Publisher-controlled AI key takeaways for WordPress using your own OpenAI or Google Gemini API key.",
   "main": "index.js",
   "scripts": {

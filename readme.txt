@@ -98,6 +98,7 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 = 1.4.6 =
 * Updated WordPress Coding Standards to 3.4.1 to address CVE-2026-45293 in development and automated code checks.
 * Updated PHP_CodeSniffer to 3.13.6 or later for CVE-2026-67434 and added dependency auditing to CI.
+* Removed generated WordPress test caches from source control; integration tests download fresh copies.
 
 = 1.4.5 =
 * Rendered the SummarAIze widget title as paragraph text by default so table-of-contents plugins do not treat Key Takeaways as a content heading.

@@ -97,8 +97,10 @@ class Summaraize_Admin_Settings {
 	 */
 	public function summaraize_register_settings() {
 		// Instantiate settings classes.
-		$openai_settings = new Summaraize_OpenAI_Settings();
-		$gemini_settings = new Summaraize_Google_Gemini_Settings();
+		$openai_settings     = new Summaraize_OpenAI_Settings();
+		$gemini_settings     = new Summaraize_Google_Gemini_Settings();
+		$openrouter_settings = new Summaraize_OpenRouter_Settings();
+		register_setting( 'summaraize_settings', 'summaraize_ai_provider', array( 'sanitize_callback' => array( __CLASS__, 'sanitize_provider' ) ) );
 
 		// Register the AI provider setting.
 		add_settings_field(
@@ -109,24 +111,6 @@ class Summaraize_Admin_Settings {
 			'summaraize_settings_section'
 		);
 
-		// Register the API key settings with sanitization.
-		register_setting(
-			'summaraize_settings',
-			'summaraize_openai_api_key',
-			array( 'sanitize_callback' => 'sanitize_text_field' )
-		);
-		register_setting(
-			'summaraize_settings',
-			'summaraize_ai_model',
-			array(
-				'sanitize_callback' => array( 'Summaraize_OpenAI_Settings', 'sanitize_openai_model' ),
-			)
-		);
-		register_setting(
-			'summaraize_settings',
-			'summaraize_google_gemini_api_key',
-			array( 'sanitize_callback' => 'sanitize_text_field' )
-		);
 		// Add the main settings section.
 		add_settings_section(
 			'summaraize_settings_section',
@@ -135,7 +119,7 @@ class Summaraize_Admin_Settings {
 			'summaraize_settings'
 		);
 
-		$allowed_ai_providers = array( 'openai', 'google_gemini' );
+		$allowed_ai_providers = array( 'openai', 'google_gemini', 'openrouter' );
 		$ai_provider          = get_option( 'summaraize_ai_provider', 'openai' );
 
 		if ( ! in_array( $ai_provider, $allowed_ai_providers, true ) ) {
@@ -143,7 +127,26 @@ class Summaraize_Admin_Settings {
 			update_option( 'summaraize_ai_provider', $ai_provider );
 		}
 
-		if ( 'openai' === $ai_provider ) {
+		if ( 'openrouter' === $ai_provider ) {
+			register_setting( 'summaraize_settings', 'summaraize_openrouter_api_key', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+			register_setting( 'summaraize_settings', 'summaraize_openrouter_model', array( 'sanitize_callback' => array( 'Summaraize_OpenRouter_Settings', 'sanitize_model_option' ) ) );
+			add_settings_field( 'summaraize_openrouter_api_key', __( 'OpenRouter API Key', 'summaraize' ), array( $openrouter_settings, 'key_field' ), 'summaraize_settings', 'summaraize_settings_section', array( 'label_for' => 'summaraize_openrouter_api_key' ) );
+			add_settings_field( 'summaraize_openrouter_model', __( 'OpenRouter Model', 'summaraize' ), array( $openrouter_settings, 'model_field' ), 'summaraize_settings', 'summaraize_settings_section', array( 'label_for' => 'summaraize_openrouter_model' ) );
+			$this->register_summaraize_main_settings_fields();
+		} elseif ( 'openai' === $ai_provider ) {
+			// Register only displayed credentials so saving another provider preserves them.
+			register_setting(
+				'summaraize_settings',
+				'summaraize_openai_api_key',
+				array( 'sanitize_callback' => 'sanitize_text_field' )
+			);
+			register_setting(
+				'summaraize_settings',
+				'summaraize_ai_model',
+				array(
+					'sanitize_callback' => array( 'Summaraize_OpenAI_Settings', 'sanitize_openai_model' ),
+				)
+			);
 			// OpenAI-specific settings.
 			add_settings_field(
 				'summaraize_openai_api_key',
@@ -178,6 +181,11 @@ class Summaraize_Admin_Settings {
 				);
 			}
 		} elseif ( 'google_gemini' === $ai_provider ) {
+			register_setting(
+				'summaraize_settings',
+				'summaraize_google_gemini_api_key',
+				array( 'sanitize_callback' => 'sanitize_text_field' )
+			);
 			// Google Gemini-specific settings.
 			add_settings_field(
 				'summaraize_google_gemini_api_key',
@@ -188,14 +196,15 @@ class Summaraize_Admin_Settings {
 				array( 'label_for' => 'summaraize_google_gemini_api_key' )
 			);
 			$gemini_api_key = get_option( 'summaraize_google_gemini_api_key' );
-			if ( ! empty( $gemini_api_key ) && Summaraize_Google_Gemini_Settings::validate_google_gemini_api_key( $gemini_api_key ) ) {
+			$gemini_status  = Summaraize_Google_Gemini_Settings::check_google_gemini_api_key( $gemini_api_key );
+			if ( ! is_wp_error( $gemini_status ) ) {
 				$this->register_summaraize_main_settings_fields();
 			} else {
 				add_settings_error(
 					'summaraize_google_gemini_api_key',
 					'invalid-api-key',
 					wp_kses_post(
-						__( 'The Google Gemini API key is invalid. Please enter a valid API key in the <a href="options-general.php?page=summaraize-settings">SummarAIze settings</a> to use SummarAIze.', 'summaraize' )
+						$gemini_status->get_error_message()
 					),
 					'error'
 				);
@@ -362,7 +371,7 @@ class Summaraize_Admin_Settings {
 	 */
 	public function sanitize_post_types( $value ) {
 		if ( ! is_array( $value ) ) {
-			return array(); // Return an empty array if the input isn’t an array.
+			return array(); // Return an empty array when the input is not an array.
 		}
 		return array_map( 'sanitize_text_field', $value ); // Sanitize each element.
 	}
@@ -445,12 +454,22 @@ class Summaraize_Admin_Settings {
 	}
 
 	/**
-	 * Render the AI provider selection dropdown.
+	 * Sanitize the selected provider.
+	 *
+	 * @param mixed $provider Submitted provider.
+	 * @return string
+	 */
+	public static function sanitize_provider( $provider ) {
+		return in_array( $provider, array( 'openai', 'google_gemini', 'openrouter' ), true ) ? $provider : 'openai';
+	}
+
+	/**
+	 * Render the AI provider dropdown.
 	 *
 	 * @return void
 	 */
 	public function summaraize_ai_provider_callback() {
-		$allowed_ai_providers = array( 'openai', 'google_gemini' );
+		$allowed_ai_providers = array( 'openai', 'google_gemini', 'openrouter' );
 		$ai_provider          = get_option( 'summaraize_ai_provider', 'openai' );
 
 		if ( ! in_array( $ai_provider, $allowed_ai_providers, true ) ) {
@@ -460,6 +479,7 @@ class Summaraize_Admin_Settings {
 
 		?>
 		<select name="summaraize_ai_provider" id="summaraize_ai_provider">
+			<option value="openrouter" <?php selected( $ai_provider, 'openrouter' ); ?>>OpenRouter</option>
 			<option value="openai" <?php selected( $ai_provider, 'openai' ); ?>>
 				<?php esc_html_e( 'OpenAI', 'summaraize' ); ?>
 			</option>
@@ -480,7 +500,7 @@ class Summaraize_Admin_Settings {
 		if ( 'google_gemini' === $ai_provider ) {
 			$value = get_option( 'summaraize_google_gemini_api_key', '' );
 			?>
-			<input type="password" name="summaraize_google_gemini_api_key" value="<?php echo esc_attr( $value ); ?>" />
+			<input type="password" id="summaraize_google_gemini_api_key" name="summaraize_google_gemini_api_key" value="<?php echo esc_attr( $value ); ?>" />
 			<p class="description">
 				<?php
 				echo wp_kses_post(
@@ -637,7 +657,7 @@ class Summaraize_Admin_Settings {
 	 * @return void
 	 */
 	public function summaraize_settings_section_callback() {
-		echo '<p>' . esc_html__( 'Configure SummarAIze with your OpenAI or Google Gemini API key.', 'summaraize' ) . '</p>';
+		echo '<p>' . esc_html__( 'Configure SummarAIze with your OpenAI, Google Gemini, or OpenRouter API key.', 'summaraize' ) . '</p>';
 	}
 
 	/**

@@ -20,12 +20,12 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 	/**
 	 * Gemini API endpoint for the configured model.
 	 */
-	const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=%s';
+	const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent';
 
 	/**
 	 * Default Gemini model used for summary generation.
 	 */
-	const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+	const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 	/**
 	 * Handles AJAX request to validate the Google Gemini API key.
@@ -49,69 +49,80 @@ class Summaraize_Google_Gemini_Settings extends Summaraize_Admin_Settings {
 
 		$api_key = sanitize_text_field( wp_unslash( $_POST['api_key'] ) );
 
-		$is_valid = self::validate_google_gemini_api_key( $api_key );
-		if ( $is_valid ) {
+		$is_valid = self::check_google_gemini_api_key( $api_key );
+		if ( ! is_wp_error( $is_valid ) ) {
 			wp_send_json_success( array( 'message' => __( 'API key is valid.', 'summaraize' ) ) );
 		} else {
-			wp_send_json_error( array( 'message' => __( 'API key is invalid.', 'summaraize' ) ) );
+			wp_send_json_error( array( 'message' => $is_valid->get_error_message() ) );
 		}
 	}
 
 	/**
-	 * Validates the Google Gemini API key by making a test API call.
+	 * Validate a key without generating billable content.
 	 *
-	 * This function uses the 'gemini-2.0-flash-lite' model for testing.
-	 *
-	 * @since 1.0.0
-	 * @param string $api_key The API key to validate.
-	 * @return bool True if the API key is valid, false otherwise.
+	 * @param string $api_key API key.
+	 * @return bool
 	 */
 	public static function validate_google_gemini_api_key( $api_key ) {
-		if ( empty( $api_key ) ) {
-			return false;
-		}
+		return ! is_wp_error( self::check_google_gemini_api_key( $api_key ) );
+	}
 
-		// Check if the API key has been validated recently via transient.
-		$validated_status = get_transient( 'summaraize_gemini_api_key_valid' );
-		if ( 'valid' === $validated_status ) {
+	/**
+	 * Check authentication independently of generation model availability.
+	 *
+	 * @param string $api_key API key.
+	 * @return true|WP_Error
+	 */
+	public static function check_google_gemini_api_key( $api_key ) {
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'missing_key', __( 'Enter your Google Gemini API key.', 'summaraize' ) );
+		}
+		$fingerprint = hash( 'sha256', $api_key );
+		if ( hash_equals( (string) get_transient( 'summaraize_gemini_api_key_valid' ), $fingerprint ) ) {
 			return true;
 		}
-
-		// Perform the API request.
-		$response = wp_remote_post(
-			sprintf( self::GEMINI_API_ENDPOINT, $api_key ),
+		$response = wp_remote_get(
+			'https://generativelanguage.googleapis.com/v1beta/models',
 			array(
-				'headers' => array(
-					'Content-Type' => 'application/json',
-				),
-				'body'    => wp_json_encode(
-					array(
-						'contents' => array(
-							array(
-								'parts' => array(
-									array(
-										'text' => 'Hello',
-									),
-								),
-							),
-						),
-					)
-				),
+				'headers' => array( 'x-goog-api-key' => $api_key ),
+				'timeout' => 30,
 			)
 		);
-
 		if ( is_wp_error( $response ) ) {
-			return false;
+			return new WP_Error( 'connection_error', __( 'Unable to reach Google Gemini. Please try again.', 'summaraize' ) );
 		}
-
-		$response_code = wp_remote_retrieve_response_code( $response );
-		if ( $response_code >= 200 && $response_code < 300 ) {
-			// Cache the validation result for 24 hours.
-			set_transient( 'summaraize_gemini_api_key_valid', 'valid', DAY_IN_SECONDS );
-			return true;
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			return self::api_error( $response );
 		}
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! isset( $body['models'] ) || ! is_array( $body['models'] ) ) {
+			return new WP_Error( 'invalid_response', __( 'Google Gemini returned an unexpected model list. Please try again.', 'summaraize' ) );
+		}
+		set_transient( 'summaraize_gemini_api_key_valid', $fingerprint, HOUR_IN_SECONDS );
+		return true;
+	}
 
-		return false;
+	/**
+	 * Explain provider failures without exposing credentials or response bodies.
+	 *
+	 * @param array $response HTTP response.
+	 * @return WP_Error
+	 */
+	private static function api_error( $response ) {
+		$code    = wp_remote_retrieve_response_code( $response );
+		$body    = json_decode( wp_remote_retrieve_body( $response ), true );
+		$message = __( 'Google Gemini could not complete the request. Please try again.', 'summaraize' );
+		if ( 429 === $code ) {
+			$message = __( 'Google Gemini quota or rate limit reached. Check this key\'s project quota and billing in Google AI Studio.', 'summaraize' );
+		} elseif ( 404 === $code ) {
+			$message = __( 'The requested Gemini model is unavailable for this account. Update SummarAIze to use a supported model.', 'summaraize' );
+		} elseif ( 403 === $code ) {
+			$message = __( 'Google denied access. Check the API key restrictions and Gemini API access for its Google Cloud project.', 'summaraize' );
+		} elseif ( 401 === $code || ( isset( $body['error']['message'] ) && false !== stripos( $body['error']['message'], 'API key not valid' ) ) ) {
+			$message = __( 'Google rejected this API key. Copy a Gemini API key from Google AI Studio.', 'summaraize' );
+		}
+		return new WP_Error( 'summaraize_gemini_api_error', $message, array( 'status' => $code ) );
 	}
 
 	/**
@@ -211,10 +222,11 @@ Here is the article:
 		);
 
 		$response = wp_remote_post(
-			sprintf( self::GEMINI_API_ENDPOINT, $api_key ),
+			self::GEMINI_API_ENDPOINT,
 			array(
 				'headers' => array(
-					'Content-Type' => 'application/json',
+					'Content-Type'   => 'application/json',
+					'x-goog-api-key' => $api_key,
 				),
 				'body'    => wp_json_encode( $payload ),
 				'timeout' => 60,
@@ -242,7 +254,7 @@ Here is the article:
 		$response_body = wp_remote_retrieve_body( $response );
 
 		if ( $response_code < 200 || $response_code >= 300 ) {
-			return new WP_Error( 'api_error', 'Google Gemini API call unsuccessful.' );
+			return self::api_error( $response );
 		}
 
 		$decoded_body = json_decode( $response_body, true );

@@ -2,8 +2,8 @@
 Contributors: jwilson529
 Tags: ai, summary, openai, gemini, tldr
 Requires at least: 5.0
-Tested up to: 7.0
-Stable tag: 1.4.6
+Tested up to: 7.1
+Stable tag: 1.5.0
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -12,14 +12,14 @@ Publisher-controlled AI key takeaways for WordPress. Bring your own API key, edi
 
 == Description ==
 
-SummarAIze is a free WordPress plugin for publishers who want editor-approved AI key takeaways across their site, using their own OpenAI or Google Gemini API key.
+SummarAIze is a free WordPress plugin for publishers who want editor-approved AI key takeaways across their site, using their own OpenAI, Google Gemini, or OpenRouter API key.
 
 It is built as a publishing workflow, not a hosted summary subscription. You connect your own provider account, choose the model, review the output, and control the cost. SummarAIze does not bundle AI credits or route requests through a hosted SummarAIze service.
 
 Use SummarAIze when you need to keep summaries accurate, editable, and current across more than one post:
 
-* Bring your own OpenAI or Google Gemini API key
-* Choose supported OpenAI models including GPT-5.5, GPT-5, GPT-5 mini, and GPT-5 nano
+* Bring your own OpenAI, Google Gemini, or OpenRouter API key
+* Choose supported OpenAI models including GPT-6 Astra, GPT-5.5, GPT-5, GPT-5 mini, and GPT-5 nano
 * Generate scannable key takeaways for posts and pages
 * Edit and reorder takeaway points before publishing
 * Track whether summaries are missing, current, stale, or manually edited
@@ -28,11 +28,26 @@ Use SummarAIze when you need to keep summaries accurate, editable, and current a
 * Customize output with shortcode attributes for title, mode, list type, and popup button styling
 * Use the plugin for free, with no SummarAIze usage quota or summary subscription
 
+== OpenRouter ==
+
+Choose OpenRouter under AI Provider and enter your API key. Click Load models, filter by provider or model name, and choose a result. You can also enter an exact provider/model ID manually.
+
+Test model generates five sample takeaways using the same response validation as real summaries and may incur a small API charge. Review the preview and the Untested, Test passed, or Test failed badge. Test results apply to the tested key/model pair for seven days. Changing the key or model requires another test. A successful sample does not guarantee every article will succeed.
+
+Click Save Changes to retain the key and model before generating post summaries. Searching or testing alone does not save these settings.
+
+== Upgrading to 1.5.0 ==
+
+Existing provider selections, API keys, OpenAI model choices, display settings, and saved summaries are retained. OpenRouter is optional. Switching providers preserves inactive providers' credentials. GPT-5 mini remains the default for new OpenAI configurations; GPT-6 Astra is optional.
+
+Gemini now uses Gemini 3.5 Flash-Lite because the previously hard-coded model is unavailable to new users. Key validation no longer generates billable content. The upgrade does not regenerate existing summaries.
+
 == Privacy ==
 
 SummarAIze sends post content to the AI provider you configure so it can generate takeaways. The plugin does not proxy requests through a third-party SummarAIze service, and generated takeaways remain editable in WordPress before publishing.
 
 * OpenAI: [Terms of Use](https://openai.com/terms), [Privacy Policy](https://openai.com/privacy)
+* OpenRouter (when selected): Post content is sent through OpenRouter to the model provider. Account privacy and routing settings apply. [Terms of Service](https://openrouter.ai/terms), [Privacy Policy](https://openrouter.ai/privacy)
 * Google Gemini: [Terms of Service](https://policies.google.com/terms), [Privacy Policy](https://policies.google.com/privacy)
 
 == Installation ==
@@ -40,7 +55,7 @@ SummarAIze sends post content to the AI provider you configure so it can generat
 1. Upload the `summaraize` folder to `/wp-content/plugins/`, or install the plugin through Plugins > Add New in WordPress.
 2. Activate the plugin through the Plugins screen in WordPress.
 3. Go to Settings > SummarAIze.
-4. Select OpenAI or Google Gemini and enter your API key.
+4. Select OpenAI, Google Gemini, or OpenRouter and enter your API key.
 5. Open a post or page, generate takeaways, then edit or reorder them before publishing.
 6. Optionally use bulk actions or publish-time automation to keep summaries current across your site.
 
@@ -63,7 +78,7 @@ Supported attributes:
 == Frequently Asked Questions ==
 
 = Do I need an API key? =
-Yes. You’ll need an API key from either OpenAI or Google Gemini. Both offer free tiers, though high usage may require a paid account.
+Yes. You need an API key from OpenAI, Google Gemini, or OpenRouter. Model availability and usage charges depend on your provider and account.
 
 = Does SummarAIze include AI credits or a hosted API service? =
 No. SummarAIze is a free, bring-your-own-key plugin. You bring your own provider account and pay OpenAI or Google directly for any API usage. There is no SummarAIze-hosted relay and no monthly summary quota from SummarAIze.
@@ -94,6 +109,21 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 4. Reorder takeaway points before publishing.
 
 == Changelog ==
+
+= 1.5.0 =
+* Replaced the OpenRouter autocomplete with separate catalog search and selection, preserving manual model IDs and test status while browsing.
+* Added persistent OpenRouter model-test badges, five-takeaway previews, and clearer provider failure messages. Test status is tied to the key/model pair and expires after seven days.
+* Added GPT-6 Astra (gpt-6-astra) to the OpenAI model selector with compatible reasoning parameters; GPT-5 mini remains the default.
+* Updated Gemini to gemini-3.5-flash-lite and fixed valid keys being rejected when the old generation model is unavailable.
+* Gemini key validation now uses a read-only request and distinguishes model access, quota, and authentication failures.
+* Fixed API-key validation/save timing and refreshed the OpenAI model cache.
+* Added OpenRouter support for Claude and other text models using your own API key.
+* Added searchable model discovery, manual model IDs, and an explicit connection test.
+* Added strict validation of five takeaways and actionable OpenRouter API errors.
+* Preserved inactive provider credentials when saving settings.
+* Restored the Save Changes button for explicit credential and model saving.
+* Added OpenRouter support to editor, bulk, and publish-time summary workflows.
+
 
 = 1.4.6 =
 * Updated WordPress Coding Standards to 3.4.1 to address CVE-2026-45293 in development and automated code checks.
@@ -173,6 +203,9 @@ SummarAIze sends post content to the AI provider you configure for summary gener
 * Initial public release.
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+Adds OpenRouter with model compatibility tests and sample previews, GPT-6 Astra support, and updated Gemini support. Existing provider selections remain in place.
 
 = 1.4.6 =
 Maintenance release updating the development security checks.

@@ -447,7 +447,9 @@ class Summaraize_Summary_Manager {
 
 		$provider_context = self::get_generation_context();
 
-		if ( 'google_gemini' === $provider_context['provider'] ) {
+		if ( 'openrouter' === $provider_context['provider'] ) {
+			$response = Summaraize_OpenRouter_Settings::request_summary( $content );
+		} elseif ( 'google_gemini' === $provider_context['provider'] ) {
 			$response = Summaraize_Google_Gemini_Settings::request_gemini_summary( $content );
 		} else {
 			$response = Summaraize_OpenAI_Settings::request_openai_summary( $content, $debug_request );
@@ -839,11 +841,13 @@ class Summaraize_Summary_Manager {
 	 */
 	private static function get_generation_context() {
 		$provider = get_option( 'summaraize_ai_provider', 'openai' );
-		$provider = in_array( $provider, array( 'openai', 'google_gemini' ), true ) ? $provider : 'openai';
+		$provider = in_array( $provider, array( 'openai', 'google_gemini', 'openrouter' ), true ) ? $provider : 'openai';
 		$model    = Summaraize_OpenAI_Settings::sanitize_openai_model( get_option( 'summaraize_ai_model', Summaraize_OpenAI_Settings::OPENAI_DEFAULT_MODEL ) );
 
 		if ( 'google_gemini' === $provider ) {
 			$model = Summaraize_Google_Gemini_Settings::GEMINI_DEFAULT_MODEL;
+		} elseif ( 'openrouter' === $provider ) {
+			$model = Summaraize_OpenRouter_Settings::sanitize_model( get_option( 'summaraize_openrouter_model', '' ) );
 		}
 
 		return array(
@@ -968,6 +972,9 @@ class Summaraize_Summary_Manager {
 	 * @return string
 	 */
 	private static function get_provider_label( $provider ) {
+		if ( 'openrouter' === $provider ) {
+			return __( 'OpenRouter', 'summaraize' );
+		}
 		if ( 'google_gemini' === $provider ) {
 			return __( 'Google Gemini', 'summaraize' );
 		}

@@ -21,7 +21,7 @@ class Summaraize_Admin_Metabox {
 	 * @since 1.0.0
 	 */
 	public function add_meta_box() {
-		$allowed_ai_providers = array( 'openai', 'google_gemini' );
+		$allowed_ai_providers = array( 'openai', 'google_gemini', 'openrouter' );
 		$ai_provider          = get_option( 'summaraize_ai_provider', 'openai' );
 
 		if ( ! in_array( $ai_provider, $allowed_ai_providers, true ) ) {
@@ -30,7 +30,11 @@ class Summaraize_Admin_Metabox {
 		}
 
 		$is_provider_configured = false;
-		if ( 'openai' === $ai_provider ) {
+		if ( 'openrouter' === $ai_provider ) {
+			$api_key                = get_option( 'summaraize_openrouter_api_key', '' );
+			$model                  = Summaraize_OpenRouter_Settings::sanitize_model( get_option( 'summaraize_openrouter_model', '' ) );
+			$is_provider_configured = ! empty( $api_key ) && '' !== $model;
+		} elseif ( 'openai' === $ai_provider ) {
 			$api_key                = get_option( 'summaraize_openai_api_key' );
 			$is_provider_configured = ! empty( $api_key ) && Summaraize_OpenAI_Settings::validate_openai_api_key( $api_key );
 		} elseif ( 'google_gemini' === $ai_provider ) {

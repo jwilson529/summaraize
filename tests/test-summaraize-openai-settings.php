@@ -18,7 +18,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function tearDown(): void {
-		delete_transient( 'summaraize_openai_models' );
+		delete_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY );
 		parent::tearDown();
 	}
 
@@ -46,7 +46,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_sanitize_openai_model_uses_cached_model_list() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-4o-mini', 'gpt-4o', 'gpt-5', 'gpt-5.5', 'gpt-5.5-2026-04-23' ), DAY_IN_SECONDS );
+		set_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY, array( 'gpt-4o-mini', 'gpt-4o', 'gpt-5', 'gpt-5.5', 'gpt-5.5-2026-04-23' ), DAY_IN_SECONDS );
 
 		$this->assertSame( 'gpt-5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5' ) );
 		$this->assertSame( 'gpt-5.5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5.5' ) );
@@ -60,7 +60,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_sanitize_openai_model_uses_first_available_model_when_locked_family_missing() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-4o-mini', 'gpt-4o', 'text-embedding-3-small' ), DAY_IN_SECONDS );
+		set_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY, array( 'gpt-4o-mini', 'gpt-4o', 'text-embedding-3-small' ), DAY_IN_SECONDS );
 
 		$this->assertSame( 'gpt-4o-mini', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5' ) );
 	}
@@ -71,7 +71,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_sanitize_openai_model_rejects_unknown_gpt5_versions() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-5', 'gpt-5-mini', 'gpt-5.5', 'gpt-5.5-2026-04-23', 'gpt-5.4', 'gpt-4o-mini' ), DAY_IN_SECONDS );
+		set_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY, array( 'gpt-5', 'gpt-5-mini', 'gpt-5.5', 'gpt-5.5-2026-04-23', 'gpt-5.4', 'gpt-4o-mini' ), DAY_IN_SECONDS );
 
 		$this->assertSame( 'gpt-5', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5' ) );
 		$this->assertSame( 'gpt-5-mini', Summaraize_OpenAI_Settings::sanitize_openai_model( 'gpt-5-mini' ) );
@@ -103,7 +103,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_get_available_openai_models_falls_back_to_unlocked_models() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-4o-mini', 'gpt-4o', 'text-embedding-3-small' ), DAY_IN_SECONDS );
+		set_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY, array( 'gpt-4o-mini', 'gpt-4o', 'text-embedding-3-small' ), DAY_IN_SECONDS );
 
 		$this->assertSame(
 			array( 'gpt-4o-mini', 'gpt-4o', 'text-embedding-3-small' ),
@@ -117,7 +117,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_get_available_openai_models_includes_gpt55_models() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-5.5-2026-04-23', 'gpt-5', 'gpt-5.5', 'gpt-5-mini', 'gpt-5-nano' ), DAY_IN_SECONDS );
+		set_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY, array( 'gpt-5.5-2026-04-23', 'gpt-5', 'gpt-5.5', 'gpt-5-mini', 'gpt-5-nano' ), DAY_IN_SECONDS );
 
 		$this->assertSame(
 			array( 'gpt-5-mini', 'gpt-5.5', 'gpt-5.5-2026-04-23', 'gpt-5', 'gpt-5-nano' ),
@@ -131,7 +131,7 @@ class Test_Summaraize_OpenAI_Settings extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_get_openai_request_model_candidates_orders_attempts() {
-		set_transient( 'summaraize_openai_models', array( 'gpt-4o-mini', 'gpt-4o' ), DAY_IN_SECONDS );
+		set_transient( Summaraize_OpenAI_Settings::OPENAI_MODELS_CACHE_KEY, array( 'gpt-4o-mini', 'gpt-4o' ), DAY_IN_SECONDS );
 
 		$reflection = new ReflectionClass( Summaraize_OpenAI_Settings::class );
 		$method     = $reflection->getMethod( 'get_openai_request_model_candidates' );

@@ -176,7 +176,7 @@
 
             addSpinnerWithMessage($field, 'Updating ' + inputName + '...'); // Add spinner with message
 
-            $.ajax({
+            return $.ajax({
                     url: summaraize_admin_vars.ajax_url,
                     type: 'POST',
                     dataType: 'json',
@@ -214,7 +214,7 @@
          * @param type
          */
         function showNotification(message, type = 'success') {
-            var $notification = $('<div class="summaraize-notification ' + type + '">' + message + '</div>');
+            var $notification = $('<div>').addClass('summaraize-notification ' + type).text(message);
             $('body').append($notification);
             $notification.fadeIn('fast');
             setTimeout(function() {
@@ -650,6 +650,106 @@
             $('#summaraize_override_options').toggle($(this).is(':checked'));
         });
 
+        // Catalog filtering never changes the submitted model until a result is chosen.
+        let openrouterModels = [];
+        const modelSearch = $('#summaraize-openrouter-search');
+        const modelSelect = $('#summaraize-openrouter-select');
+        const modelId = $('#summaraize_openrouter_model');
+        const catalogStatus = $('#summaraize-openrouter-catalog-status');
+        function renderOpenrouterModels() {
+            const labels = summaraize_admin_vars.openrouter;
+            const words = modelSearch.val().trim().toLowerCase().split(/\s+/).filter(Boolean);
+            const matches = openrouterModels.filter(function(model) {
+                const text = (model.name + ' ' + model.id).toLowerCase();
+                return words.every(word => text.includes(word));
+            });
+            modelSelect.empty().append($('<option>').val('').text(labels.choose));
+            matches.forEach(function(model) {
+                $('<option>').val(model.id).text(model.name + ' — ' + model.id).appendTo(modelSelect);
+            });
+            modelSelect.val(matches.some(model => model.id === modelId.val()) ? modelId.val() : '');
+            modelSelect.prop('disabled', !matches.length);
+            catalogStatus.text(matches.length ? labels.matches.replace('%d', matches.length) : labels.noMatches);
+        }
+        modelSearch.on('input', renderOpenrouterModels).on('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                modelSelect.trigger('focus');
+            }
+        });
+        modelSelect.on('change', function() {
+            if (this.value && this.value !== modelId.val()) {
+                modelId.val(this.value).trigger('input');
+            }
+        });
+        modelId.on('input change', function() {
+            if (openrouterModels.length) renderOpenrouterModels();
+        });
+
+        // A test applies only to the exact inputs sent; edits invalidate pending results.
+        let openrouterRevision = 0;
+        const openrouterBadge = $('#summaraize-openrouter-badge');
+        const openrouterPreview = $('#summaraize-openrouter-preview');
+        function setOpenrouterBadge(state, label) {
+            openrouterBadge.attr('data-state', state).text(label);
+        }
+        $('#summaraize_openrouter_api_key, #summaraize_openrouter_model').on('input change', function() {
+            openrouterRevision++;
+            setOpenrouterBadge('untested', summaraize_admin_vars.openrouter.untested);
+            $('#summaraize-openrouter-status').text(summaraize_admin_vars.openrouter.changed);
+            openrouterPreview.empty().prop('hidden', true);
+        });
+        $('#summaraize-openrouter-load, #summaraize-openrouter-test').on('click', function() {
+            const labels = summaraize_admin_vars.openrouter;
+            const testing = this.id === 'summaraize-openrouter-test';
+            const revision = openrouterRevision;
+            const buttons = $('#summaraize-openrouter-load, #summaraize-openrouter-test');
+            const status = testing ? $('#summaraize-openrouter-status') : catalogStatus;
+            buttons.prop('disabled', true);
+            status.text(testing ? labels.testing : labels.loading);
+            if (testing) {
+                setOpenrouterBadge('testing', labels.testing);
+                openrouterPreview.empty().prop('hidden', true);
+            }
+            $.ajax({
+                url: summaraize_admin_vars.ajax_url,
+                type: 'POST',
+                dataType: 'json',
+                timeout: 130000,
+                data: {
+                    action: 'summaraize_openrouter',
+                    nonce: summaraize_admin_vars.summaraize_ajax_nonce,
+                    operation: testing ? 'test' : 'models',
+                    api_key: testing ? $('#summaraize_openrouter_api_key').val() : '',
+                    model: testing ? $('#summaraize_openrouter_model').val() : ''
+                }
+            }).done(function(response) {
+                if (testing && revision !== openrouterRevision) return;
+                if (!response.success) {
+                    status.text(response.data.message || labels.failed);
+                    if (testing) setOpenrouterBadge('failed', labels.testFailed);
+                } else if (testing) {
+                    setOpenrouterBadge('passed', labels.passed);
+                    status.text(response.data.message);
+                    response.data.points.forEach(function(point) {
+                        $('<li>').text(point.text).appendTo(openrouterPreview);
+                    });
+                    openrouterPreview.prop('hidden', false);
+                } else {
+                    openrouterModels = response.data;
+                    modelSearch.prop('disabled', false);
+                    renderOpenrouterModels();
+                    modelSearch.trigger('focus');
+                }
+            }).fail(function() {
+                if (testing && revision !== openrouterRevision) return;
+                status.text(labels.network);
+                if (testing) setOpenrouterBadge('failed', labels.testFailed);
+            }).always(function() {
+                buttons.prop('disabled', false);
+            });
+        });
+
         // Validate API key with debounce
         const apiKeyField = $('input[name="summaraize_openai_api_key"]');
         apiKeyField.on('input paste', debounce(function() {
@@ -667,10 +767,14 @@
                 })
                 .done(function(validationResponse) {
                     if (validationResponse.success) {
-                        autoSaveField(apiKeyField);
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
+                        if (apiKeyField.val() !== apiKey) {
+                            return;
+                        }
+                        autoSaveField(apiKeyField).done(function(saved) {
+                            if (saved.success && apiKeyField.val() === apiKey) {
+                                location.reload();
+                            }
+                        });
                     } else {
                         showNotification(validationResponse.data.message || 'Invalid API key.', 'error');
                     }
@@ -700,10 +804,14 @@
                 })
                 .done(function(validationResponse) {
                     if (validationResponse.success) {
-                        autoSaveField(geminiApiKeyField);
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
+                        if (geminiApiKeyField.val() !== apiKey) {
+                            return;
+                        }
+                        autoSaveField(geminiApiKeyField).done(function(saved) {
+                            if (saved.success && geminiApiKeyField.val() === apiKey) {
+                                location.reload();
+                            }
+                        });
                     } else {
                         showNotification(validationResponse.data.message || 'Invalid API key.', 'error');
                     }
@@ -723,7 +831,7 @@
 
         // Initialize auto-save
         function initializeAutoSave() {
-            $('.summaraize-settings-form').find('input, select, textarea').on('input change', debounce(function() {
+            $('.summaraize-settings-form').find('input, select, textarea').not('#summaraize-openrouter-search, #summaraize-openrouter-select, #summaraize_openrouter_api_key, #summaraize_openrouter_model, input[name="summaraize_openai_api_key"], input[name="summaraize_google_gemini_api_key"]').on('input change', debounce(function() {
                 autoSaveField($(this));
             }, 500));
         }

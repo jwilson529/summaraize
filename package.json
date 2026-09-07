@@ -1,7 +1,7 @@
 {
   "name": "summaraize",
-  "version": "1.4.6",
-  "description": "Publisher-controlled AI key takeaways for WordPress using your own OpenAI or Google Gemini API key.",
+  "version": "1.5.0",
+  "description": "Publisher-controlled AI key takeaways for WordPress using your own OpenAI, Google Gemini, or OpenRouter API key.",
   "main": "index.js",
   "scripts": {
     "test": "docker compose up --abort-on-container-exit --exit-code-from tests tests",

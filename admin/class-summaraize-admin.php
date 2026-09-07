@@ -75,7 +75,7 @@ class Summaraize_Admin {
 				$this->plugin_name,
 				plugin_dir_url( __FILE__ ) . 'css/summaraize-admin.css',
 				array(),
-				$this->version,
+				$this->version . '.' . filemtime( plugin_dir_path( __FILE__ ) . 'css/summaraize-admin.css' ),
 				'all'
 			);
 		}
@@ -105,7 +105,7 @@ class Summaraize_Admin {
 				$this->plugin_name,
 				plugin_dir_url( __FILE__ ) . 'js/summaraize-admin.js',
 				array( 'jquery', 'jquery-ui-sortable' ),
-				$this->version,
+				$this->version . '.' . filemtime( plugin_dir_path( __FILE__ ) . 'js/summaraize-admin.js' ),
 				false
 			);
 
@@ -113,6 +113,23 @@ class Summaraize_Admin {
 				$this->plugin_name,
 				'summaraize_admin_vars',
 				array(
+					'openrouter'                => array(
+						'choose'     => __( 'Choose a model', 'summaraize' ),
+						'noMatches'  => __( 'No matching models. Try another search or enter a model ID manually.', 'summaraize' ),
+						/* translators: %d: Number of matching models. */
+						'matches'    => __( '%d models found', 'summaraize' ),
+
+						'untested'   => __( 'Untested', 'summaraize' ),
+						'passed'     => __( 'Test passed', 'summaraize' ),
+						'testFailed' => __( 'Test failed', 'summaraize' ),
+						'changed'    => __( 'Settings changed. Test this key and model, then Save Changes to use them.', 'summaraize' ),
+						'testing'    => __( 'Testing the selected model...', 'summaraize' ),
+						'loading'    => __( 'Loading text models...', 'summaraize' ),
+						'failed'     => __( 'OpenRouter request failed.', 'summaraize' ),
+						'loaded'     => __( 'Models loaded. Type in the model field to search.', 'summaraize' ),
+						'empty'      => __( 'No text models found. You can paste a model ID manually.', 'summaraize' ),
+						'network'    => __( 'Unable to complete the OpenRouter request. Please try again.', 'summaraize' ),
+					),
 					'ajax_url'                  => admin_url( 'admin-ajax.php' ),
 					'summaraize_ajax_nonce'     => wp_create_nonce( 'summaraize_ajax_nonce' ),
 					'summaraize_meta_box_nonce' => wp_create_nonce( 'summaraize_meta_box' ),
@@ -151,7 +168,7 @@ class Summaraize_Admin {
 
 		$query = sanitize_text_field( wp_unslash( $_POST['content'] ) );
 
-		$allowed_ai_providers = array( 'openai', 'google_gemini' );
+		$allowed_ai_providers = array( 'openai', 'google_gemini', 'openrouter' );
 		$ai_provider          = get_option( 'summaraize_ai_provider', 'openai' );
 
 		if ( ! in_array( $ai_provider, $allowed_ai_providers, true ) ) {

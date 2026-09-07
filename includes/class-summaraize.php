@@ -114,6 +114,7 @@ class Summaraize {
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-admin-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-openai-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-google-gemini-settings.php';
+		require_once plugin_dir_path( __DIR__ ) . 'admin/class-summaraize-openrouter-settings.php';
 		require_once plugin_dir_path( __DIR__ ) . 'includes/class-summaraize-summary-manager.php';
 
 		/**
@@ -155,10 +156,12 @@ class Summaraize {
 	 */
 	private function define_admin_hooks() {
 
-		$plugin_admin    = new Summaraize_Admin( $this->get_plugin_name(), $this->get_version() );
-		$plugin_settings = new Summaraize_Admin_Settings();
-		$plugin_openai   = new Summaraize_OpenAI_Settings();
-		$plugin_gemini   = new Summaraize_Google_Gemini_Settings();
+		$plugin_admin      = new Summaraize_Admin( $this->get_plugin_name(), $this->get_version() );
+		$plugin_settings   = new Summaraize_Admin_Settings();
+		$plugin_openai     = new Summaraize_OpenAI_Settings();
+		$plugin_gemini     = new Summaraize_Google_Gemini_Settings();
+		$plugin_openrouter = new Summaraize_OpenRouter_Settings();
+		$this->loader->add_action( 'wp_ajax_summaraize_openrouter', $plugin_openrouter, 'ajax_action' );
 		$plugin_metabox  = new Summaraize_Admin_Metabox();
 		$summary_manager = new Summaraize_Summary_Manager();
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );

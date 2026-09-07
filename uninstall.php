@@ -21,6 +21,8 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 $summaraize_options = array(
 	'summaraize_ai_provider',
 	'summaraize_openai_api_key',
+	'summaraize_openrouter_api_key',
+	'summaraize_openrouter_model',
 	'summaraize_google_gemini_api_key',
 	'summaraize_ai_model',
 	'summaraize_assistant_id',
@@ -66,5 +68,11 @@ foreach ( $summaraize_post_meta_keys as $summaraize_post_meta_key ) {
 
 // Clear transients.
 delete_transient( 'summaraize_openai_models' );
+delete_transient( 'summaraize_openrouter_models' );
 delete_transient( 'summaraize_gemini_api_key_valid' );
 delete_transient( 'summaraize_gemini_models' );
+
+delete_transient( 'summaraize_openai_models_v2' );
+delete_transient( 'summaraize_openai_models_key' );
+
+delete_option( 'summaraize_openrouter_test' );

@@ -29,18 +29,19 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	const OPENAI_CHAT_COMPLETIONS_ENDPOINT   = 'https://api.openai.com/v1/chat/completions';
 	const OPENAI_MODELS_ENDPOINT             = 'https://api.openai.com/v1/models';
 	const OPENAI_DEFAULT_MODEL               = 'gpt-5-mini';
-	const OPENAI_MODELS_CACHE_KEY            = 'summaraize_openai_models';
+	const OPENAI_MODELS_CACHE_KEY            = 'summaraize_openai_models_v2';
 	const OPENAI_LOCKED_MODELS               = array(
 		'gpt-5-mini',
 		'gpt-5.5',
 		'gpt-5.5-2026-04-23',
 		'gpt-5',
 		'gpt-5-nano',
+		'gpt-6-astra',
 	);
 	const OPENAI_MAX_MODEL_FALLBACK_ATTEMPTS = 5;
 
 	/**
-	 * OpenAI reasoning model pattern for GPT-5 and O-series family.
+	 * OpenAI reasoning model pattern for GPT-5, GPT-6, and O-series family.
 	 *
 	 * These models require completion token limits and do not accept all legacy request
 	 * parameters used by earlier chat-completion models.
@@ -83,7 +84,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 		echo '<p class="description">';
 		esc_html_e( 'Select the OpenAI model used for summarization.', 'summaraize' );
 		echo ' ';
-		esc_html_e( 'GPT-5.5 is OpenAI\'s latest flagship model; use `gpt-5.5` for the strongest results, or `gpt-5-mini`/`gpt-5-nano` to reduce cost.', 'summaraize' );
+		esc_html_e( 'Choose gpt-6-astra for GPT-6, or gpt-5-mini/gpt-5-nano to reduce cost.', 'summaraize' );
 		echo '</p>';
 	}
 
@@ -155,7 +156,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	}
 
 	/**
-	 * Filter model lists to the locked GPT-5 family options supported by the plugin.
+	 * Filter model lists to the supported model options supported by the plugin.
 	 *
 	 * @since 1.2.7
 	 * @param array|mixed $available_models Model IDs from cache or API.
@@ -619,7 +620,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			return false;
 		}
 
-		if ( 0 === strpos( $model, self::OPENAI_REASONING_MODEL_PREFIX ) ) {
+		if ( 0 === strpos( $model, self::OPENAI_REASONING_MODEL_PREFIX ) || 0 === strpos( $model, 'gpt-6' ) ) {
 			return true;
 		}
 
@@ -629,7 +630,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 	/**
 	 * Build the OpenAI payload for a request.
 	 *
-	 * GPT-5 and O-series models use max_completion_tokens and do not support the
+	 * GPT-5, GPT-6, and O-series models use max_completion_tokens and do not support the
 	 * full legacy temperature/max_tokens pair used for earlier chat models.
 	 *
 	 * @since 1.2.7
@@ -657,6 +658,10 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 		} else {
 			$payload['temperature'] = 0.7;
 			$payload['max_tokens']  = 2000;
+		}
+
+		if ( 0 === strpos( $model, 'gpt-6' ) ) {
+			$payload['reasoning_effort'] = 'low';
 		}
 
 		$payload['response_format'] = array(
@@ -1074,6 +1079,10 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			$fallback_payload['response_format'] = $payload['response_format'];
 		}
 
+		if ( isset( $payload['reasoning_effort'] ) ) {
+			$fallback_payload['reasoning_effort'] = $payload['reasoning_effort'];
+		}
+
 		$args['body'] = wp_json_encode( $fallback_payload );
 
 		return wp_remote_post( $openai_url, $args );
@@ -1092,7 +1101,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 		}
 
 		$cached_models = get_transient( self::OPENAI_MODELS_CACHE_KEY );
-		if ( is_array( $cached_models ) && ! empty( $cached_models ) ) {
+		if ( is_array( $cached_models ) && ! empty( $cached_models ) && hash_equals( (string) get_transient( 'summaraize_openai_models_key' ), hash( 'sha256', $api_key ) ) ) {
 			return $cached_models;
 		}
 
@@ -1137,6 +1146,7 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 			$model_ids = array_values( array_unique( array_filter( $models ) ) );
 			// Cache the models in a transient for 24 hours.
 			set_transient( self::OPENAI_MODELS_CACHE_KEY, $model_ids, DAY_IN_SECONDS );
+			set_transient( 'summaraize_openai_models_key', hash( 'sha256', $api_key ), DAY_IN_SECONDS );
 
 			return $model_ids;
 		}
@@ -1180,31 +1190,8 @@ class Summaraize_OpenAI_Settings extends Summaraize_Admin_Settings {
 
 		$api_key = sanitize_text_field( wp_unslash( $_POST['api_key'] ) );
 
-		$response = wp_remote_get(
-			self::OPENAI_MODELS_ENDPOINT,
-			array(
-				'headers' => array(
-					'Content-Type'  => 'application/json',
-					'Authorization' => 'Bearer ' . $api_key,
-				),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'Invalid API key or unable to reach OpenAI.', 'summaraize' ),
-				)
-			);
-			return;
-		}
-
-		if ( wp_remote_retrieve_response_code( $response ) < 200 || wp_remote_retrieve_response_code( $response ) >= 300 ) {
-			wp_send_json_error(
-				array(
-					'message' => __( 'Invalid API key or unable to reach OpenAI.', 'summaraize' ),
-				)
-			);
+		if ( false === self::validate_openai_api_key( $api_key ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid API key or unable to reach OpenAI.', 'summaraize' ) ) );
 			return;
 		}
 

@@ -227,9 +227,9 @@
     background-color: #dc3232;
 }
 
-/* Hide the Save Changes Button */
+/* Keep explicit saving available for credentials and keyboard-only workflows. */
 .summaraize-settings-form .submit {
-    display: none;
+    display: block;
 }
 
 /* Loading Icon Styles */
@@ -465,3 +465,16 @@ p.summaraize-settings {
 .summaraize-modal-debug[hidden] {
     display: none;
 }
+
+/* Test state includes text so meaning never depends on color alone. */
+.summaraize-test-badge { display:inline-block; padding:4px 10px; border-radius:12px; font-weight:600; background:#f0f0f1; color:#50575e; }
+.summaraize-test-badge[data-state="passed"] { background:#d7f0db; color:#145523; }
+.summaraize-test-badge[data-state="failed"] { background:#fce2e2; color:#8a1717; }
+.summaraize-test-badge[data-state="testing"] { background:#e5eff8; color:#135e96; }
+#summaraize-openrouter-preview { max-width:650px; }
+
+.summaraize-model-picker { display:flex; flex-direction:column; gap:6px; max-width:600px; margin-bottom:10px; }
+.summaraize-model-picker label { font-weight:500; }
+.summaraize-model-picker input,
+.summaraize-model-picker select { width:100%; max-width:100%; min-width:0; }
+#summaraize-openrouter-catalog-status { margin:0 0 8px; }
